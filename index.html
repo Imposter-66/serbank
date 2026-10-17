@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SerBANK</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --fg:#1d2330; --muted:#6b7280; --accent:#2563eb; --line:#e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151c; --card:#1b2029; --fg:#e8ebf2; --muted:#98a2b3; --accent:#6ea0ff; --line:#2a3140; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  h1 { font-size:1.4rem; margin:0; }
+  .status { font-size:.85rem; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
+  .dot.on { background:#22c55e; }
+  form { display:flex; gap:8px; margin:20px 0; flex-wrap:wrap; }
+  input { flex:1 1 140px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font:inherit; }
+  button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
+  ul { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+  li { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  li .k { font-weight:600; }
+  li .meta { font-size:.75rem; color:var(--muted); }
+  li.flash { animation: flash 1s ease-out; }
+  @keyframes flash { from { background:color-mix(in srgb, var(--accent) 25%, var(--card)); } to { background:var(--card); } }
+  .empty { color:var(--muted); text-align:center; padding:32px 0; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:20px 0; }
+  .panel h2 { font-size:1rem; margin:0 0 10px; }
+  .panel iframe { display:block; margin:0 auto; }
+  .keybox { margin-top:12px; display:grid; gap:8px; }
+  .keybox code { display:block; padding:10px 12px; border-radius:8px; background:var(--bg); border:1px solid var(--line); word-break:break-all; font-size:.85rem; }
+  .keybox .note { font-size:.8rem; color:var(--muted); margin:0; }
+  .keybox .err { font-size:.85rem; color:#ef4444; margin:0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>SerBANK</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">接続中…</span></div>
+  </header>
+
+  <section class="panel">
+    <h2>アカウント</h2>
+    <!-- ① 見た目（アカウント情報） -->
+    <iframe src="https://script.google.com/a/macros/school.kasugai.ed.jp/s/AKfycbytjzCXcwEO5u_kSvyBaXrY-iqHkuEI_ZjMtHtNDG-SZiaPvXbtE-pGwV3qZaIpfHyU/exec?embed=1" width="420" height="520" style="border:0;border-radius:12px;max-width:100%" allow="clipboard-write" title="GAKU acct"></iframe>
+
+    <div class="keybox" id="keybox" hidden>
+      <div id="whoami"></div>
+      <button type="button" id="issueKey">APIキーを発行する</button>
+      <p class="err" id="keyErr" hidden></p>
+      <div id="keyResult" hidden>
+        <code id="keyValue"></code>
+        <button type="button" class="ghost" id="copyKey">コピー</button>
+        <p class="note">このキーは今回しか表示されません。再発行すると古いキーは使えなくなります。他人に見せないでください。</p>
+      </div>
+    </div>
+  </section>
+
+  <form id="form">
+    <input id="key" placeholder="キー (例: メモ)" required maxlength="100">
+    <input id="value" placeholder="値" required>
+    <button type="submit">共有</button>
+  </form>
+
+  <ul id="list"></ul>
+  <p class="empty" id="empty" hidden>まだデータがありません。上のフォームから追加してみてください。</p>
+</main>
+
+<!-- ② 機能の呼び出し（見た目無し） -->
+<script>
+var GakuAcct = (function () {
+  var win = null, n = 0, wait = {}, hooks = [], me = null, proof = '';
+  // 「この埋め込み画面から届いた信号か」を調べる（ほかのサイトからの偽の信号は無視する）
+  // GAS のページは外の枠の中にもう一つ枠がある二重の作りなので、枠の中の窓まで調べる
+  function inTree(w, src, depth) {
+    if (depth > 3) return false;
+    var n = 0; try { n = w.frames.length; } catch (x) {}
+    for (var i = 0; i < n; i++) {
+      var c = null; try { c = w.frames[i]; } catch (x) {}
+      if (c && (c === src || inTree(c, src, depth + 1))) return true;
+    }
+    return false;
+  }
+  function mine(src) {
+    var fs = document.querySelectorAll('iframe');
+    for (var i = 0; i < fs.length; i++) {
+      var w = fs[i].contentWindow;
+      if (w && (w === src || inTree(w, src, 0))) return true;
+    }
+    return false;
+  }
+  function fire(d) { hooks.forEach(function (f) { try { f(d); } catch (x) { console.error(x); } }); }
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || typeof d !== 'object' || !mine(e.source)) return;
+    if (d.type === 'gakuacct') {
+      win = e.source;
+      if (d.event === 'login') { me = d; proof = ''; }
+      else if (d.event === 'update' && me) { for (var k in d) { if (k !== 'type' && k !== 'event') me[k] = d[k]; } }
+      else if (d.event === 'proof') { proof = d.code || ''; if (me) me.code = proof; }
+      else if (d.event === 'logout') { me = null; proof = ''; }
+      fire(d);
+    } else if (d.type === 'gakuacct-result' && wait[d.id]) { wait[d.id](d.result); delete wait[d.id]; }
+  });
+  // 読み込まれたあとに、いまの状態（ログイン中か）を、埋め込み画面に聞く（信号を取りこぼさないため）
+  function each(w, depth) {
+    if (!w || depth > 3) return;
+    try { w.postMessage({ type: 'gakuacct-hello' }, '*'); } catch (x) {}
+    var n = 0; try { n = w.frames.length; } catch (x) {}
+    for (var i = 0; i < n; i++) { try { each(w.frames[i], depth + 1); } catch (x) {} }
+  }
+  function hello() {
+    var fs = document.querySelectorAll('iframe');
+    for (var i = 0; i < fs.length; i++) { each(fs[i].contentWindow, 0); }
+  }
+  [800, 2500, 6000].forEach(function (t) { setTimeout(function () { if (!win) hello(); }, t); });
+  window.addEventListener('load', hello);
+  return {
+    // すべての信号を受け取る。d.event：ready / login / proof / update / logout
+    on: function (f) { hooks.push(f); },
+    // ログインした瞬間に呼ばれる（すでにログイン中なら、すぐに呼ばれる）。d.via：'password'（パスワード）/ 'saved'（保存された情報）/ 'resume'
+    onLogin: function (f) {
+      hooks.push(function (d) { if (d.event === 'login') f(d); });
+      if (me) f(me);
+    },
+    // ログアウトしたときに呼ばれる
+    onLogout: function (f) { hooks.push(function (d) { if (d.event === 'logout') f(d); }); },
+    // いまログインしている人の情報（いなければ null）
+    user: function () { return me; },
+    // 本人確認用の確認コード（届いていなければ ''）
+    code: function () { return proof; },
+    // 機能を、見た目なしで呼び出す
+    call: function (fn, args) {
+      return new Promise(function (ok) {
+        if (!win) { ok({ ok: false, code: 'wait', message: 'GAKU acct がまだ読み込まれていません。' }); return; }
+        var id = ++n, t = setTimeout(function () { delete wait[id]; ok({ ok: false, code: 'timeout', message: '時間切れです。' }); }, 90000);
+        wait[id] = function (r) { clearTimeout(t); ok(r); };
+        win.postMessage({ type: 'gakuacct-call', id: id, fn: fn, args: args || [] }, '*');
+      });
+    }
+  };
+})();
+</script>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const list = $("list"), empty = $("empty"), dot = $("dot"), statusText = $("statusText");
+  let data = {};
+  let myId = "";
+  let count = 0;
+  let ws;
+
+  function render(flashKey) {
+    const keys = Object.keys(data).sort((a, b) => data[b].updatedAt - data[a].updatedAt);
+    list.innerHTML = "";
+    empty.hidden = keys.length > 0;
+    for (const key of keys) {
+      const e = data[key];
+      const li = document.createElement("li");
+      if (key === flashKey) li.className = "flash";
+
+      const left = document.createElement("div");
+      const k = document.createElement("div");
+      k.className = "k"; k.textContent = key;
+      const v = document.createElement("div");
+      v.textContent = String(e.value);
+      const m = document.createElement("div");
+      m.className = "meta";
+      m.textContent = `${e.updatedBy === myId ? "あなた" : e.updatedBy} · ${new Date(e.updatedAt).toLocaleTimeString("ja-JP")}`;
+      left.append(k, v, m);
+
+      const del = document.createElement("button");
+      del.className = "ghost"; del.textContent = "削除";
+      del.onclick = () => ws.send(JSON.stringify({ type: "delete", key }));
+
+      li.append(left, del);
+      list.append(li);
+    }
+  }
+
+  function setStatus() {
+    const on = ws && ws.readyState === WebSocket.OPEN;
+    dot.classList.toggle("on", on);
+    statusText.textContent = on ? `接続中 · ${count}人が閲覧中` : "切断されました。再接続中…";
+  }
+
+  function connect() {
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${proto}://${location.host}`);
+
+    ws.onopen = setStatus;
+    ws.onclose = () => { setStatus(); setTimeout(connect, 1500); };
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === "init") { myId = msg.id; data = msg.data; count = msg.count; render(); }
+      else if (msg.type === "update") { data[msg.key] = msg.entry; render(msg.key); }
+      else if (msg.type === "delete") { delete data[msg.key]; render(); }
+      else if (msg.type === "presence") { count = msg.count; }
+      setStatus();
+    };
+  }
+
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "set", key: $("key").value.trim(), value: $("value").value }));
+    $("value").value = "";
+    $("value").focus();
+  });
+
+  // ---- アカウント連携: ログインしたらAPIキーを発行できる ----
+  const keybox = $("keybox"), keyErr = $("keyErr"), keyResult = $("keyResult");
+
+  function userLabel(u) {
+    return u && (u.name || u.email || u.id) ? String(u.name || u.email || u.id) : "ログイン中";
+  }
+
+  GakuAcct.onLogin((u) => {
+    $("whoami").textContent = `${userLabel(u)} としてログイン中`;
+    keybox.hidden = false;
+  });
+  GakuAcct.onLogout(() => {
+    keybox.hidden = true;
+    keyResult.hidden = true;
+    keyErr.hidden = true;
+    $("keyValue").textContent = "";
+  });
+
+  $("issueKey").addEventListener("click", async () => {
+    keyErr.hidden = true;
+    const u = GakuAcct.user();
+    if (!u) { keyErr.textContent = "ログインしてください。"; keyErr.hidden = false; return; }
+    const { code: _drop, ...user } = u;
+    try {
+      const r = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user, code: GakuAcct.code() }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || "発行に失敗しました");
+      $("keyValue").textContent = body.key;
+      keyResult.hidden = false;
+    } catch (e) {
+      keyErr.textContent = e.message;
+      keyErr.hidden = false;
+    }
+  });
+
+  $("copyKey").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("keyValue").textContent);
+      $("copyKey").textContent = "コピーしました";
+      setTimeout(() => ($("copyKey").textContent = "コピー"), 1500);
+    } catch {
+      keyErr.textContent = "コピーできませんでした。手動で選択してコピーしてください。";
+      keyErr.hidden = false;
+    }
+  });
+
+  connect();
+})();
+</script>
+</body>
+</html>
