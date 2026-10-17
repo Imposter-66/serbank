@@ -37,6 +37,8 @@
   .keybox { margin-top:12px; display:grid; gap:8px; }
   .keybox code { display:block; padding:10px 12px; border-radius:8px; background:var(--bg); border:1px solid var(--line); word-break:break-all; font-size:.85rem; }
   .keybox .note { font-size:.8rem; color:var(--muted); margin:0; }
+  .diagbox { margin-top:32px; font-size:.8rem; color:var(--muted); }
+  .diagbox pre { white-space:pre-wrap; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; min-height:2.5em; }
   .keybox .err { font-size:.85rem; color:#ef4444; margin:0; }
 </style>
 </head>
@@ -79,6 +81,11 @@
 
   <ul id="list"></ul>
   <p class="empty" id="empty" hidden>まだデータがありません。上のフォームから追加してみてください。</p>
+
+  <details class="diagbox">
+    <summary>診断情報 (うまくいかないときに見せてください) · 画面バージョン v3</summary>
+    <pre id="diag"></pre>
+  </details>
 </main>
 
 <!-- ② 機能の呼び出し（見た目無し） -->
@@ -281,9 +288,20 @@ var GakuAcct = (function () {
     return new Promise((resolve) => {
       proofWaiter = resolve;
       askProof();
-      setTimeout(() => { if (proofWaiter === resolve) { proofWaiter = null; resolve(GakuAcct.code()); } }, 6000);
+      // GAKU PAY (Google) の起動が遅いことがあるので、少し長めに待つ
+      setTimeout(() => { if (proofWaiter === resolve) { proofWaiter = null; resolve(GakuAcct.code()); } }, 15000);
     });
   }
+
+  // ---- 診断情報 (困ったときに見せてもらうための記録。確認コードやキーそのものは記録しない) ----
+  const diagBox = $("diag");
+  function diag(text) {
+    const t = new Date().toLocaleTimeString("ja-JP");
+    diagBox.textContent += `${t}  ${text}\n`;
+  }
+  GakuAcct.on((d) => {
+    diag(`GAKU acct から受信: ${d.event}` + (d.event === "proof" ? ` (確認コード ${String(d.code || "").length}桁)` : ""));
+  });
 
   let myKey = ""; // 発行したAPIキー (この画面を開いている間だけ覚えて、アップロードに使う)
 
@@ -293,14 +311,21 @@ var GakuAcct = (function () {
     if (!u) { keyErr.textContent = "ログインしてください。"; keyErr.hidden = false; return; }
     const { code: _drop, ...user } = u;
     $("issueKey").disabled = true;
+    $("issueKey").textContent = "確認中…";
     try {
+      diag("発行ボタンが押された。GAKU acct に確認コードを要求");
       const code = await freshProof();
+      diag(`確認コード: ${code ? code.length + "桁を取得" : "届かなかった"}`);
+      if (!code) {
+        throw new Error("GAKU acct から確認コードが届きませんでした。いったんログアウトして、もう一度ログインしてからお試しください。それでも出ない場合は、下の「診断情報」を教えてください。");
+      }
       const r = await fetch("/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user, code }),
       });
       const body = await r.json();
+      diag(`サーバーの応答: ${r.status}` + (r.ok ? "" : ` ${body.error || ""}`));
       if (!r.ok) throw new Error(body.error || "発行に失敗しました");
       myKey = body.key;
       $("keyValue").textContent = body.key;
@@ -310,6 +335,7 @@ var GakuAcct = (function () {
       keyErr.hidden = false;
     } finally {
       $("issueKey").disabled = false;
+      $("issueKey").textContent = "APIキーを発行する";
     }
   });
 
