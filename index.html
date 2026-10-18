@@ -274,10 +274,11 @@ var GakuAcct = (function () {
   // 確認コードは5分で期限切れ&1回しか使えないので、発行の直前に GAKU acct から新しいコードをもらう
   let proofWaiter = null;
   let rawProof = "", rawProofAt = 0; // 届いた確認コード (まだ使っていないもの)
+  let gakuSource = null;             // GAKU acct が実際にメッセージを送ってきた窓
 
   // 埋め込み画面の中から届いたメッセージか (診断用)
   function inTree(w, src, depth) {
-    if (depth > 3) return false;
+    if (depth > 6) return false;
     let n = 0; try { n = w.frames.length; } catch {}
     for (let i = 0; i < n; i++) {
       let c = null; try { c = w.frames[i]; } catch {}
@@ -299,6 +300,7 @@ var GakuAcct = (function () {
     const d = e.data;
     if (!d || typeof d !== "object" || d.type !== "gakuacct") return;
     const code = String(d.code || "");
+    if (e.source) gakuSource = e.source; // 実際に送ってきた窓 (こちらからの問い合わせは、ここへ直接送れる)
     diag(`受信: ${d.event}` + (d.event === "proof" ? ` (確認コード ${code.length}桁)` : "") +
       ` / 送信元 ${e.origin || "?"} / 埋め込み画面の中: ${fromMyFrames(e.source) ? "はい" : "いいえ"}`);
     if (d.event === "proof" && /^[0-9a-f]{64}$/.test(code)) {
@@ -308,10 +310,15 @@ var GakuAcct = (function () {
     if (d.event === "logout") rawProof = "";
   });
   function askProof() {
+    // 送ってきた窓が分かっているときは、そこへ直接問い合わせる (窓をたどるより確実)
+    if (gakuSource) {
+      try { gakuSource.postMessage({ type: "gakuacct-hello" }, "*"); diag("問い合わせ: 送ってきた窓へ直接送信"); return; }
+      catch (err) { diag(`問い合わせ: 直接送信に失敗 (${err.message})`); }
+    }
     let reached = 0;
     const levels = [];
     const ask = (w, depth) => {
-      if (!w || depth > 3) return;
+      if (!w || depth > 6) return;
       try { w.postMessage({ type: "gakuacct-hello" }, "*"); reached++; } catch {}
       let n = 0; try { n = w.frames.length; } catch {}
       levels[depth] = (levels[depth] || 0) + 1;
@@ -330,6 +337,18 @@ var GakuAcct = (function () {
       rawProof = "";
       proofWaiter = resolve;
       askProof();
+
+      // 知らせが届かないときの別ルート: GAKU acct に「確認コードをください」と直接呼び出す
+      // (GAKU PAY 側の ACCT_FN に proof が登録されている場合だけ使える)
+      setTimeout(() => {
+        if (proofWaiter !== resolve) return;
+        GakuAcct.call("proof").then((r) => {
+          const ok = r && r.ok && /^[0-9a-f]{64}$/.test(String(r.code || ""));
+          diag(`直接呼び出し(proof): ${ok ? "成功" : "失敗 " + ((r && (r.message || r.code)) || "")}`);
+          if (ok && proofWaiter === resolve) { proofWaiter = null; resolve(r.code); }
+        });
+      }, 3000);
+
       // GAKU PAY (Google) の起動が遅いことがあるので、少し長めに待つ
       setTimeout(() => { if (proofWaiter === resolve) { proofWaiter = null; resolve(""); } }, 15000);
     });
