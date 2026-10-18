@@ -68,7 +68,7 @@ const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 // 「?embed=1」などは付けない。別のURLを使うときは環境変数 GAKU_VERIFY_URL で上書きできる。
 const GAKU_VERIFY_URL = (
   process.env.GAKU_VERIFY_URL ||
-  "https://script.google.com/a/macros/school.kasugai.ed.jp/s/AKfycbytjzCXcwEO5u_kSvyBaXrY-iqHkuEI_ZjMtHtNDG-SZiaPvXbtE-pGwV3qZaIpfHyU/exec"
+  "https://script.google.com/a/macros/school.kasugai.ed.jp/s/AKfycbyDnabgy3qc0L6Y4cfwW53tyzPMPS2thg1nd6mAvtIHa5YURK3Tui4c7vCUWt47sCow/exec"
 ).split("?")[0];
 
 // アカウントの本人確認。成功したら { uid, name } を返し、失敗したら理由つきの Error を投げる。
