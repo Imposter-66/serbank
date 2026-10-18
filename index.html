@@ -258,18 +258,24 @@ var GakuAcct = (function () {
     return u && (u.name || u.email || u.id) ? String(u.name || u.email || u.id) : "ログイン中";
   }
 
-  GakuAcct.onLogin((u) => {
+  let acctUser = null; // ログイン中のアカウント情報
+
+  function showLogin(u) {
+    acctUser = u;
     $("whoami").textContent = `${userLabel(u)} としてログイン中`;
     keybox.hidden = false;
-  });
-  GakuAcct.onLogout(() => {
+  }
+  function hideLogin() {
+    acctUser = null;
     myKey = "";
     rawProof = "";
     keybox.hidden = true;
     keyResult.hidden = true;
     keyErr.hidden = true;
     $("keyValue").textContent = "";
-  });
+  }
+  GakuAcct.onLogin(showLogin);
+  GakuAcct.onLogout(hideLogin);
 
   // 確認コードは5分で期限切れ&1回しか使えないので、発行の直前に GAKU acct から新しいコードをもらう
   let proofWaiter = null;
@@ -307,7 +313,10 @@ var GakuAcct = (function () {
       if (proofWaiter) { const f = proofWaiter; proofWaiter = null; f(code); }
       else { rawProof = code; rawProofAt = Date.now(); }
     }
-    if (d.event === "logout") rawProof = "";
+    // ログイン・ログアウトも、送信元の判定に頼らず受け取る。
+    // (偽の知らせでボタンが出ても、キーはサーバーが確認コードを検証してからしか発行しないので安全)
+    if (d.event === "login") showLogin(d);
+    if (d.event === "logout") hideLogin();
   });
   function askProof() {
     // 送ってきた窓が分かっているときは、そこへ直接問い合わせる (窓をたどるより確実)
@@ -367,7 +376,7 @@ var GakuAcct = (function () {
 
   $("issueKey").addEventListener("click", async () => {
     keyErr.hidden = true;
-    const u = GakuAcct.user();
+    const u = acctUser || GakuAcct.user();
     if (!u) { keyErr.textContent = "ログインしてください。"; keyErr.hidden = false; return; }
     const { code: _drop, ...user } = u;
     $("issueKey").disabled = true;
