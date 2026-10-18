@@ -281,6 +281,7 @@ var GakuAcct = (function () {
   let proofWaiter = null;
   let rawProof = "", rawProofAt = 0; // 届いた確認コード (まだ使っていないもの)
   let gakuSource = null;             // GAKU acct が実際にメッセージを送ってきた窓
+  let otherSeen = 0;                 // 診断用: GAKU acct 以外のメッセージを記録した数
 
   // 埋め込み画面の中から届いたメッセージか (診断用)
   function inTree(w, src, depth) {
@@ -304,7 +305,16 @@ var GakuAcct = (function () {
   // 確認コードは、サーバーが GAKU PAY に問い合わせて本物か確かめるので、送信元の判定に頼らず受け取ってよい。
   window.addEventListener("message", (e) => {
     const d = e.data;
-    if (!d || typeof d !== "object" || d.type !== "gakuacct") return;
+    if (!d || typeof d !== "object" || d.type !== "gakuacct") {
+      // 診断: GAKU acct 以外のメッセージも、何が届いているか記録する (多すぎないよう30件まで)
+      if (otherSeen < 30 && !$("diagbox").hidden) {
+        otherSeen++;
+        let kind = typeof d;
+        if (d && typeof d === "object") kind = "type=" + String(d.type) + " keys=" + Object.keys(d).slice(0, 5).join(",");
+        diag(`その他の受信: ${kind} / 送信元 ${e.origin || "?"}`);
+      }
+      return;
+    }
     const code = String(d.code || "");
     if (e.source) gakuSource = e.source; // 実際に送ってきた窓 (こちらからの問い合わせは、ここへ直接送れる)
     diag(`受信: ${d.event}` + (d.event === "proof" ? ` (確認コード ${code.length}桁)` : "") +
@@ -371,6 +381,21 @@ var GakuAcct = (function () {
     const t = new Date().toLocaleTimeString("ja-JP");
     diagBox.textContent += `${t}  ${text}\n`;
   }
+
+  // 診断: 埋め込み枠の読み込み完了と、窓の入れ子の深さを記録する
+  function treeShape() {
+    const levels = [];
+    const walk = (w, depth) => {
+      if (!w || depth > 8) return;
+      levels[depth] = (levels[depth] || 0) + 1;
+      let n = 0; try { n = w.frames.length; } catch {}
+      for (let i = 0; i < n; i++) { try { walk(w.frames[i], depth + 1); } catch {} }
+    };
+    document.querySelectorAll("iframe").forEach((f) => walk(f.contentWindow, 0));
+    return levels.join(" / ") || "なし";
+  }
+  document.querySelectorAll("iframe").forEach((f) => f.addEventListener("load", () => diag(`枠の読み込みが完了 (窓の階層: ${treeShape()})`)));
+  [3000, 8000].forEach((ms) => setTimeout(() => diag(`${ms / 1000}秒後: 窓の階層 ${treeShape()} / GAKU acct からの受信 ${gakuSource ? "あり" : "なし"}`), ms));
 
   let myKey = ""; // 発行したAPIキー (この画面を開いている間だけ覚えて、アップロードに使う)
 
