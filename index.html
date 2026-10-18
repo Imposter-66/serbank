@@ -82,7 +82,7 @@
   <ul id="list"></ul>
   <p class="empty" id="empty" hidden>まだデータがありません。上のフォームから追加してみてください。</p>
 
-  <details class="diagbox">
+  <details class="diagbox" id="diagbox" hidden>
     <summary>診断情報 (うまくいかないときに見せてください) · 画面バージョン v3</summary>
     <pre id="diag"></pre>
   </details>
@@ -264,6 +264,7 @@ var GakuAcct = (function () {
   });
   GakuAcct.onLogout(() => {
     myKey = "";
+    rawProof = "";
     keybox.hidden = true;
     keyResult.hidden = true;
     keyErr.hidden = true;
@@ -272,36 +273,76 @@ var GakuAcct = (function () {
 
   // 確認コードは5分で期限切れ&1回しか使えないので、発行の直前に GAKU acct から新しいコードをもらう
   let proofWaiter = null;
-  GakuAcct.on((d) => {
-    if (d.event === "proof" && proofWaiter) { const f = proofWaiter; proofWaiter = null; f(d.code || ""); }
+  let rawProof = "", rawProofAt = 0; // 届いた確認コード (まだ使っていないもの)
+
+  // 埋め込み画面の中から届いたメッセージか (診断用)
+  function inTree(w, src, depth) {
+    if (depth > 3) return false;
+    let n = 0; try { n = w.frames.length; } catch {}
+    for (let i = 0; i < n; i++) {
+      let c = null; try { c = w.frames[i]; } catch {}
+      if (c && (c === src || inTree(c, src, depth + 1))) return true;
+    }
+    return false;
+  }
+  function fromMyFrames(src) {
+    for (const f of document.querySelectorAll("iframe")) {
+      const w = f.contentWindow;
+      if (w && (w === src || inTree(w, src, 0))) return true;
+    }
+    return false;
+  }
+
+  // GAKU acct 宛てのメッセージを、判定の前の生の状態で受け取る。
+  // 確認コードは、サーバーが GAKU PAY に問い合わせて本物か確かめるので、送信元の判定に頼らず受け取ってよい。
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (!d || typeof d !== "object" || d.type !== "gakuacct") return;
+    const code = String(d.code || "");
+    diag(`受信: ${d.event}` + (d.event === "proof" ? ` (確認コード ${code.length}桁)` : "") +
+      ` / 送信元 ${e.origin || "?"} / 埋め込み画面の中: ${fromMyFrames(e.source) ? "はい" : "いいえ"}`);
+    if (d.event === "proof" && /^[0-9a-f]{64}$/.test(code)) {
+      if (proofWaiter) { const f = proofWaiter; proofWaiter = null; f(code); }
+      else { rawProof = code; rawProofAt = Date.now(); }
+    }
+    if (d.event === "logout") rawProof = "";
   });
   function askProof() {
+    let reached = 0;
+    const levels = [];
     const ask = (w, depth) => {
       if (!w || depth > 3) return;
-      try { w.postMessage({ type: "gakuacct-hello" }, "*"); } catch {}
+      try { w.postMessage({ type: "gakuacct-hello" }, "*"); reached++; } catch {}
       let n = 0; try { n = w.frames.length; } catch {}
+      levels[depth] = (levels[depth] || 0) + 1;
       for (let i = 0; i < n; i++) { try { ask(w.frames[i], depth + 1); } catch {} }
     };
     document.querySelectorAll("iframe").forEach((f) => ask(f.contentWindow, 0));
+    diag(`問い合わせた窓: ${reached}個 (階層ごと: ${levels.join(" / ") || "なし"})`);
   }
   function freshProof() {
     return new Promise((resolve) => {
+      // ログイン直後に届いた新しいコードがあれば、それを使う (コードは5分・1回だけ有効)
+      if (rawProof && Date.now() - rawProofAt < 240000) {
+        const c = rawProof; rawProof = "";
+        return resolve(c);
+      }
+      rawProof = "";
       proofWaiter = resolve;
       askProof();
       // GAKU PAY (Google) の起動が遅いことがあるので、少し長めに待つ
-      setTimeout(() => { if (proofWaiter === resolve) { proofWaiter = null; resolve(GakuAcct.code()); } }, 15000);
+      setTimeout(() => { if (proofWaiter === resolve) { proofWaiter = null; resolve(""); } }, 15000);
     });
   }
 
   // ---- 診断情報 (困ったときに見せてもらうための記録。確認コードやキーそのものは記録しない) ----
   const diagBox = $("diag");
+  // 普段は見えない。アドレスの末尾に ?diag=1 を付けて開いたときだけ表示する
+  if (new URLSearchParams(location.search).get("diag") === "1") $("diagbox").hidden = false;
   function diag(text) {
     const t = new Date().toLocaleTimeString("ja-JP");
     diagBox.textContent += `${t}  ${text}\n`;
   }
-  GakuAcct.on((d) => {
-    diag(`GAKU acct から受信: ${d.event}` + (d.event === "proof" ? ` (確認コード ${String(d.code || "").length}桁)` : ""));
-  });
 
   let myKey = ""; // 発行したAPIキー (この画面を開いている間だけ覚えて、アップロードに使う)
 
