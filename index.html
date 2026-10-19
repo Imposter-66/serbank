@@ -2,77 +2,231 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SerBANK</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
-<meta name="theme-color" content="#3bb5ff">
-
+<meta name="theme-color" content="#e9efff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e17" media="(prefers-color-scheme: dark)">
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --fg:#1d2330; --muted:#6b7280; --accent:#2563eb; --line:#e5e7eb; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#12151c; --card:#1b2029; --fg:#e8ebf2; --muted:#98a2b3; --accent:#6ea0ff; --line:#2a3140; }
+  :root {
+    --fg:#1d1d1f; --muted:#6e6e73; --accent:#0a84ff; --accent2:#5e9bff;
+    --glass:rgba(255,255,255,.52); --glass-solid:rgba(250,251,255,.94); --glass-line:rgba(255,255,255,.72); --glass-hi:rgba(255,255,255,.95);
+    --inner:rgba(255,255,255,.58); --inner-line:rgba(60,70,100,.14); --shadow:0 10px 40px rgba(40,60,120,.14), 0 1px 3px rgba(40,60,120,.08);
+    --ok:#30b350; --warn:#ff9f0a; --bad:#ff453a; --bar:rgba(10,132,255,.78);
+    --bg1:#e8eeff; --bg2:#f4e9ff; --bg3:#ffe9f2; --r:26px;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
-  * { box-sizing: border-box; }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg:#f5f5f7; --muted:#a1a1a6; --accent:#2f93ff; --accent2:#6aa9ff;
+      --glass:rgba(34,38,54,.52); --glass-solid:rgba(28,31,44,.95); --glass-line:rgba(255,255,255,.13); --glass-hi:rgba(255,255,255,.2);
+      --inner:rgba(255,255,255,.07); --inner-line:rgba(255,255,255,.14); --shadow:0 12px 44px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.3);
+      --ok:#32d74b; --warn:#ffb340; --bad:#ff6961; --bar:rgba(47,147,255,.85);
+      --bg1:#0b0e17; --bg2:#10122a; --bg3:#161024;
+    }
+  }
+  * { box-sizing:border-box; }
   [hidden] { display:none !important; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif; }
-  main { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
-  header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-  h1 { font-size:1.4rem; margin:0; }
-  .status { font-size:.85rem; color:var(--muted); display:flex; align-items:center; gap:6px; }
-  .dot { width:10px; height:10px; border-radius:50%; background:#ef4444; }
-  .dot.on { background:#22c55e; }
-  form { display:flex; gap:8px; margin:20px 0; flex-wrap:wrap; }
-  input { flex:1 1 140px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font:inherit; }
-  button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
-  button.ghost { background:transparent; color:var(--muted); padding:4px 8px; }
-  ul { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
-  li { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; gap:12px; align-items:center; }
-  li .k { font-weight:600; }
-  li .meta, .meta { font-size:.75rem; color:var(--muted); }
-  li img, li video { display:block; max-width:100%; max-height:320px; border-radius:8px; margin:6px 0; }
-  li > div:first-child { min-width:0; }
-  li.flash { animation: flash 1s ease-out; }
-  @keyframes flash { from { background:color-mix(in srgb, var(--accent) 25%, var(--card)); } to { background:var(--card); } }
-  .empty { color:var(--muted); text-align:center; padding:32px 0; }
-  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:20px 0; }
-  .panel h2 { font-size:1rem; margin:0 0 10px; }
-  .panel iframe { display:block; margin:0 auto; }
-  .keybox { margin-top:12px; display:grid; gap:8px; }
-  .keybox code { display:block; padding:10px 12px; border-radius:8px; background:var(--bg); border:1px solid var(--line); word-break:break-all; font-size:.85rem; }
-  .keybox .note { font-size:.8rem; color:var(--muted); margin:0; }
-  .diagbox { margin-top:32px; font-size:.8rem; color:var(--muted); }
-  .diagbox pre { white-space:pre-wrap; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; min-height:2.5em; }
-  .keybox .err { font-size:.85rem; color:#ef4444; margin:0; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    margin:0; min-height:100vh; color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Segoe UI",sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2) 50%,var(--bg3)); background-attachment:fixed;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* やわらかく動く背景の光 */
+  .bg { position:fixed; inset:0; overflow:hidden; z-index:-1; pointer-events:none; }
+  .bg i { position:absolute; border-radius:50%; filter:blur(80px); opacity:.55; animation:float 26s ease-in-out infinite alternate; }
+  .bg .b1 { width:46vw; height:46vw; left:-10vw; top:-14vw; background:#69b8ff; }
+  .bg .b2 { width:40vw; height:40vw; right:-8vw; top:10vh; background:#ff9ccd; animation-duration:32s; animation-delay:-8s; }
+  .bg .b3 { width:38vw; height:38vw; left:28vw; bottom:-18vw; background:#8ee9c4; animation-duration:29s; animation-delay:-14s; }
+  @media (prefers-color-scheme: dark) { .bg i { opacity:.32; } .bg .b1 { background:#1f5fff; } .bg .b2 { background:#8b3dff; } .bg .b3 { background:#00a89a; } }
+  @keyframes float { from { transform:translate3d(0,0,0) scale(1); } to { transform:translate3d(6vw,4vh,0) scale(1.12); } }
+  @media (prefers-reduced-motion: reduce) { .bg i { animation:none; } * { transition:none !important; animation:none !important; } }
+
+  /* ガラス */
+  .glass {
+    background:var(--glass); border:1px solid var(--glass-line); border-radius:var(--r);
+    -webkit-backdrop-filter:blur(30px) saturate(170%); backdrop-filter:blur(30px) saturate(170%);
+    box-shadow:var(--shadow), inset 0 1px 0 var(--glass-hi);
+  }
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) { .glass { background:var(--glass-solid); } }
+
+  /* 全体の配置: 左にGAKU acct、右に項目 (横に広がる) */
+  .shell { display:grid; grid-template-columns:440px minmax(0,1fr); gap:22px; max-width:1560px; margin:0 auto; padding:24px; transition:grid-template-columns .5s cubic-bezier(.2,.8,.2,1); }
+  .shell.solo { grid-template-columns:440px; justify-content:center; align-content:center; min-height:100vh; }
+  .left { position:sticky; top:24px; align-self:start; display:grid; gap:14px; }
+  .brand { display:flex; align-items:center; gap:10px; padding:0 6px; font-weight:700; font-size:1.35rem; letter-spacing:-.01em; }
+  .brand img { width:34px; height:34px; border-radius:9px; box-shadow:0 2px 10px rgba(10,132,255,.35); }
+  .acct { padding:10px; }
+  .acct iframe { display:block; margin:0 auto; }
+  .stage { min-width:0; display:flex; flex-direction:column; gap:16px; min-height:calc(100vh - 48px); animation:rise .5s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes rise { from { opacity:0; transform:translateY(14px) scale(.99); } to { opacity:1; transform:none; } }
+
+  /* 右上の「＋」ボタン */
+  .plus { position:fixed; top:22px; right:26px; z-index:20; width:52px; height:52px; padding:0; display:grid; place-items:center; border-radius:50%; cursor:pointer; color:var(--accent); transition:transform .2s, box-shadow .2s; }
+  .plus:hover { transform:scale(1.07) rotate(90deg); }
+  .plus:active { transform:scale(.96); }
+  .plus svg { width:24px; height:24px; }
+
+  /* 部品 */
+  h2 { font-size:1.35rem; margin:0; letter-spacing:-.01em; }
+  h3 { font-size:1.02rem; margin:0; }
+  .muted { color:var(--muted); }
+  .lead { color:var(--muted); font-size:.9rem; margin:4px 0 0; }
+  .card { padding:20px 22px; }
+  .hero { display:flex; align-items:center; gap:14px; padding:16px 22px; margin-right:66px; }
+  .avatar { width:46px; height:46px; border-radius:50%; display:grid; place-items:center; font-weight:700; font-size:1.15rem; color:#fff; background:linear-gradient(135deg,#5ac8fa,#0a84ff 55%,#bf5af2); box-shadow:0 4px 14px rgba(10,132,255,.4); flex:none; }
+  .hero-sub { font-size:.74rem; color:var(--muted); line-height:1.2; }
+  .hero-name { font-size:1.35rem; font-weight:700; letter-spacing:-.01em; line-height:1.3; word-break:break-all; }
+  .btn { appearance:none; border:1px solid var(--inner-line); background:var(--inner); color:var(--fg); font:inherit; font-size:.88rem; font-weight:600; padding:8px 16px; border-radius:999px; cursor:pointer; transition:transform .15s, background .2s, opacity .2s; white-space:nowrap; }
+  .btn:hover { background:var(--glass-hi); }
+  .btn:active { transform:scale(.97); }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .btn.primary { background:linear-gradient(180deg,var(--accent2),var(--accent)); color:#fff; border-color:transparent; box-shadow:0 4px 14px rgba(10,132,255,.35); }
+  .btn.primary:hover { filter:brightness(1.06); }
+  .btn.big { padding:13px 22px; font-size:1rem; width:100%; }
+  .btn.sm { padding:5px 12px; font-size:.8rem; }
+  .btn.danger { color:var(--bad); }
+  .btn.ghost { background:transparent; border-color:transparent; color:var(--muted); }
+  input[type=text], input:not([type]) { width:100%; font:inherit; color:var(--fg); background:var(--inner); border:1px solid var(--inner-line); border-radius:14px; padding:12px 14px; outline:none; transition:box-shadow .2s, border-color .2s; }
+  input:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(10,132,255,.2); }
+  label { display:block; font-size:.82rem; color:var(--muted); font-weight:600; margin:0 0 6px 2px; }
+  .err { color:var(--bad); font-size:.86rem; margin:10px 0 0; }
+  .hint { color:var(--muted); font-size:.82rem; margin:8px 2px 0; }
+  code, .mono { font-family:var(--mono); }
+
+  /* 状態の表示 */
+  .pill { display:inline-flex; align-items:center; gap:7px; padding:4px 12px 4px 10px; border-radius:999px; font-weight:700; font-size:.88rem; background:var(--inner); border:1px solid var(--inner-line); }
+  .pill .dot { width:9px; height:9px; border-radius:50%; background:currentColor; box-shadow:0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
+  .lv-quiet { color:var(--ok); } .lv-normal { color:var(--accent); } .lv-busy { color:var(--warn); } .lv-heavy { color:var(--bad); }
+  .gauge { height:8px; border-radius:99px; background:var(--inner); border:1px solid var(--inner-line); overflow:hidden; }
+  .gauge i { display:block; height:100%; border-radius:99px; background:currentColor; transition:width .6s cubic-bezier(.2,.8,.2,1); min-width:6px; }
+  .st-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:10px; margin-top:16px; }
+  .tile { background:var(--inner); border:1px solid var(--inner-line); border-radius:16px; padding:11px 14px; }
+  .tile .tl { font-size:.74rem; color:var(--muted); }
+  .tile .tv { font-size:1.2rem; font-weight:700; letter-spacing:-.01em; line-height:1.35; }
+  .tile .ts { font-size:.72rem; color:var(--muted); }
+  .chart { margin-top:16px; }
+  .chart .cap { display:flex; justify-content:space-between; font-size:.74rem; color:var(--muted); margin-bottom:4px; }
+  .chart svg { width:100%; height:84px; display:block; }
+  .chart rect { fill:var(--bar); }
+
+  /* プロジェクトの一覧 */
+  .sect-title { display:flex; align-items:center; justify-content:space-between; margin:6px 4px 0; }
+  .pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+  .pcard { text-align:left; font:inherit; color:inherit; cursor:pointer; padding:18px 20px; display:grid; gap:8px; transition:transform .2s, box-shadow .2s; }
+  .pcard:hover { transform:translateY(-3px); box-shadow:0 16px 44px rgba(40,60,120,.2), inset 0 1px 0 var(--glass-hi); }
+  .pcard .pn { font-weight:700; font-size:1.05rem; word-break:break-all; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:.74rem; padding:2px 10px; border-radius:99px; background:var(--inner); border:1px solid var(--inner-line); color:var(--muted); }
+  .empty { text-align:center; color:var(--muted); padding:34px 10px; }
+
+  /* プロジェクト画面 */
+  .pview { display:grid; grid-template-columns:268px minmax(0,1fr); gap:16px; flex:1; min-height:0; }
+  .side { display:flex; flex-direction:column; gap:6px; padding:14px; position:sticky; top:24px; align-self:start; min-height:calc(100vh - 170px); max-height:calc(100vh - 48px); }
+  .side-top { display:flex; align-items:center; gap:6px; padding:4px 2px 12px; border-bottom:1px solid var(--inner-line); margin-bottom:6px; }
+  .pname { flex:1; min-width:0; font-weight:700; font-size:1.05rem; line-height:1.35; word-break:break-all; }
+  .pname-input { padding:7px 10px; border-radius:10px; font-weight:700; }
+  .icon-btn { appearance:none; border:0; background:transparent; color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer; display:grid; place-items:center; font-size:1.1rem; flex:none; }
+  .icon-btn:hover { background:var(--inner); color:var(--fg); }
+  .menu-item { display:flex; align-items:center; gap:10px; width:100%; text-align:left; font:inherit; font-weight:600; font-size:.95rem; color:var(--fg); background:transparent; border:1px solid transparent; border-radius:14px; padding:10px 12px; cursor:pointer; transition:background .2s; }
+  .menu-item svg { width:19px; height:19px; flex:none; color:var(--muted); }
+  .menu-item:hover { background:var(--inner); }
+  .menu-item.on { background:var(--inner); border-color:var(--inner-line); box-shadow:inset 0 1px 0 var(--glass-hi); color:var(--accent); }
+  .menu-item.on svg { color:var(--accent); }
+  .mini { flex:1; min-height:150px; display:flex; flex-direction:column; gap:10px; margin-top:8px; padding:14px; border-radius:20px; background:var(--inner); border:1px solid var(--inner-line); cursor:pointer; }
+  .mini-head { font-size:.74rem; color:var(--muted); font-weight:600; display:flex; justify-content:space-between; }
+  .mini-rows { display:grid; gap:5px; font-size:.8rem; }
+  .mini-rows div { display:flex; justify-content:space-between; gap:8px; }
+  .mini-rows b { font-weight:700; }
+  .mini-chart { flex:1; min-height:46px; }
+  .mini-chart svg { width:100%; height:100%; display:block; }
+  .mini-chart rect { fill:var(--bar); }
+  .content { min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .seg { display:inline-flex; padding:3px; gap:2px; border-radius:999px; background:var(--inner); border:1px solid var(--inner-line); }
+  .seg button { appearance:none; border:0; font:inherit; font-size:.85rem; font-weight:600; background:transparent; color:var(--muted); padding:6px 16px; border-radius:999px; cursor:pointer; }
+  .seg button.on { background:var(--glass-hi); color:var(--fg); box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  @media (prefers-color-scheme: dark) { .seg button.on { background:rgba(255,255,255,.16); } }
+
+  /* APIキー */
+  .kcard-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .badge { display:inline-block; font-size:.7rem; font-weight:700; padding:1px 9px; border-radius:99px; margin-left:8px; vertical-align:2px; }
+  .badge.pub { color:var(--ok); background:color-mix(in srgb, var(--ok) 15%, transparent); }
+  .badge.sec { color:var(--bad); background:color-mix(in srgb, var(--bad) 15%, transparent); }
+  .secret-card { border-color:color-mix(in srgb, var(--bad) 38%, var(--glass-line)); }
+  .krow { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px 14px; border-radius:16px; background:var(--inner); border:1px solid var(--inner-line); margin-top:8px; }
+  .krow.off { opacity:.62; }
+  .klabel { font-size:.82rem; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .st { font-size:.7rem; font-weight:700; padding:0 8px; border-radius:99px; }
+  .st.on { color:var(--ok); background:color-mix(in srgb, var(--ok) 15%, transparent); }
+  .st.off { color:var(--muted); background:var(--inner); }
+  .kval { display:block; font-size:.84rem; word-break:break-all; margin-top:2px; user-select:all; }
+  .kbtns { display:flex; gap:6px; flex-wrap:wrap; }
+  .warnbox { font-size:.82rem; color:var(--bad); background:color-mix(in srgb, var(--bad) 10%, transparent); border:1px solid color-mix(in srgb, var(--bad) 30%, transparent); border-radius:14px; padding:9px 13px; margin-bottom:6px; }
+  .aiprompt pre { white-space:pre-wrap; word-break:break-word; background:var(--inner); border:1px solid var(--inner-line); border-radius:14px; padding:12px 14px; font:.76rem/1.55 var(--mono); max-height:280px; overflow:auto; margin:12px 0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* サーバーデータ */
+  .dlist { display:grid; gap:8px; margin-top:12px; }
+  .drow { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:11px 14px; border-radius:16px; background:var(--inner); border:1px solid var(--inner-line); }
+  .drow .dk { font-weight:700; word-break:break-all; }
+  .drow .dv { font:.8rem/1.5 var(--mono); color:var(--muted); word-break:break-all; max-height:4.5em; overflow:hidden; }
+  .drow > div:first-child { min-width:0; }
+  .fgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin-top:12px; }
+  .fcard { border-radius:18px; overflow:hidden; background:var(--inner); border:1px solid var(--inner-line); display:flex; flex-direction:column; }
+  .fcard .th { aspect-ratio:4/3; background:rgba(0,0,0,.06); display:grid; place-items:center; }
+  .fcard .th img, .fcard .th video { width:100%; height:100%; object-fit:cover; display:block; }
+  .fcard .fi { padding:9px 12px 4px; font-size:.82rem; }
+  .fcard .fn { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fcard .fm { color:var(--muted); font-size:.72rem; }
+  .fcard .fb { display:flex; gap:6px; padding:6px 10px 10px; }
+
+  .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:50; padding:11px 20px; border-radius:999px; font-weight:600; font-size:.9rem; animation:rise .3s both; }
+  .toast.bad { color:var(--bad); }
+  .diagbox { max-width:900px; margin:0 auto; padding:0 24px 40px; font-size:.8rem; color:var(--muted); }
+  .diagbox pre { white-space:pre-wrap; background:var(--glass); border:1px solid var(--glass-line); border-radius:12px; padding:10px 12px; min-height:2.5em; }
+  .loading { text-align:center; color:var(--muted); padding:60px 10px; }
+
+  @media (max-width: 1000px) {
+    .shell, .shell.solo { grid-template-columns:minmax(0,1fr); justify-content:stretch; }
+    .shell.solo { align-content:start; }
+    .left { position:static; max-width:440px; width:100%; margin:0 auto; }
+    .pview { grid-template-columns:minmax(0,1fr); }
+    .side { position:static; min-height:0; max-height:none; }
+    .mini { min-height:130px; }
+    .hero { margin-right:0; }
+    .plus { top:14px; right:14px; width:46px; height:46px; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>SerBANK</h1>
-  </header>
+<div class="bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
 
-  <section class="panel">
-    <h2>アカウント</h2>
-    <!-- ① 見た目（アカウント情報） -->
-    <iframe src="https://script.google.com/a/macros/school.kasugai.ed.jp/s/AKfycbyDnabgy3qc0L6Y4cfwW53tyzPMPS2thg1nd6mAvtIHa5YURK3Tui4c7vCUWt47sCow/exec?embed=1" width="420" height="520" style="border:0;border-radius:12px;max-width:100%" allow="clipboard-write" title="GAKU acct"></iframe>
+<button type="button" class="plus glass" id="plusBtn" data-act="new" title="プロジェクトを作成" aria-label="プロジェクトを作成" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
 
-    <div class="keybox" id="keybox" hidden>
-      <div id="whoami"></div>
-      <button type="button" id="issueKey">APIキーを発行する</button>
-      <p class="err" id="keyErr" hidden></p>
-      <div id="keyResult" hidden>
-        <code id="keyValue"></code>
-        <button type="button" class="ghost" id="copyKey">コピー</button>
-        <p class="note">このキーは今回しか表示されません。再発行すると古いキーは使えなくなります。他人に見せないでください。</p>
-      </div>
+<div class="shell solo" id="shell">
+  <aside class="left">
+    <div class="brand"><img id="brandIcon" alt="" width="34" height="34"><span>SerBANK</span></div>
+    <div class="glass acct">
+      <!-- ① 見た目（アカウント情報） -->
+      <iframe src="https://script.google.com/a/macros/school.kasugai.ed.jp/s/AKfycbyDnabgy3qc0L6Y4cfwW53tyzPMPS2thg1nd6mAvtIHa5YURK3Tui4c7vCUWt47sCow/exec?embed=1" width="420" height="520" style="border:0;border-radius:12px;max-width:100%" allow="clipboard-write" title="GAKU acct"></iframe>
     </div>
-  </section>
+  </aside>
 
-  <details class="diagbox" id="diagbox" hidden>
-    <summary>診断情報 (うまくいかないときに見せてください) · 画面バージョン v3</summary>
-    <pre id="diag"></pre>
-  </details>
-</main>
+  <main class="stage" id="stage" hidden>
+    <header class="hero glass" id="hero"></header>
+    <div id="view"></div>
+  </main>
+</div>
+
+<details class="diagbox" id="diagbox" hidden>
+  <summary>診断情報 (うまくいかないときに見せてください) · 画面バージョン v4</summary>
+  <pre id="diag"></pre>
+</details>
 
 <!-- ② 機能の呼び出し（見た目無し） -->
 <script>
@@ -152,11 +306,587 @@ var GakuAcct = (function () {
 
 <script>
 (() => {
+  "use strict";
   const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const BASE = location.origin;
 
-  // ---- アカウント連携: ログインしたらAPIキーを発行できる ----
-  const keybox = $("keybox"), keyErr = $("keyErr"), keyResult = $("keyResult");
+  // ブラウザのタブのアイコンを、左上のロゴにも使う
+  try { const ic = document.querySelector('link[rel="icon"]'); if (ic) $("brandIcon").src = ic.href; } catch {}
 
+  // ======== 状態 ========
+  const S = {
+    user: null, token: "", view: "home", pid: null, tab: "keys", dtab: "data",
+    projects: null, project: null, status: null, pstats: null,
+    revealed: new Set(), dataObj: null, filesArr: null, renaming: false, loadErr: "",
+  };
+  let dataKeys = []; // 画面に出しているデータのキー名 (削除ボタン用)
+
+  // ======== 表示用の関数 ========
+  const fmtBytes = (n) => {
+    if (n == null) return "-";
+    if (n < 1024) return n + " B";
+    if (n < 1048576) return (n / 1024).toFixed(1) + " KB";
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + " MB";
+    return (n / 1073741824).toFixed(2) + " GB";
+  };
+  const fmtTime = (ms) => (ms ? new Date(ms).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "まだありません");
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" });
+  const fmtUp = (s) => {
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    return d ? `${d}日 ${h}時間` : h ? `${h}時間 ${m}分` : m ? `${m}分` : `${s}秒`;
+  };
+  const num = (n) => Number(n || 0).toLocaleString("ja-JP");
+  const mask = (v) => v.slice(0, 3) + "•".repeat(14) + v.slice(-4);
+  const initial = (name) => Array.from(String(name || "?"))[0] || "?";
+
+  function bars(series, label) {
+    const max = Math.max(5, ...series);
+    const w = 600, h = 100, n = series.length, bw = w / n;
+    const rects = series.map((v, i) => {
+      const bh = v ? Math.max(3, (v / max) * (h - 4)) : 1.5;
+      return `<rect x="${(i * bw + 1).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${bh.toFixed(1)}" rx="2"${v ? "" : ' opacity=".25"'}/>`;
+    }).join("");
+    return `<div class="chart"><div class="cap"><span>${esc(label)}</span><span>最大 ${num(Math.max(...series))} 件/分</span></div><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${esc(label)}">${rects}</svg><div class="cap"><span>60分前</span><span>いま</span></div></div>`;
+  }
+  function miniBars(series) {
+    const max = Math.max(3, ...series.slice(-30));
+    const s = series.slice(-30), w = 300, h = 60, bw = w / s.length;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">` + s.map((v, i) => {
+      const bh = v ? Math.max(3, (v / max) * (h - 2)) : 1.5;
+      return `<rect x="${(i * bw + .8).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${(bw - 1.6).toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5"${v ? "" : ' opacity=".25"'}/>`;
+    }).join("") + `</svg>`;
+  }
+  const tile = (l, v, s) => `<div class="tile"><div class="tl">${esc(l)}</div><div class="tv">${v}</div>${s ? `<div class="ts">${s}</div>` : ""}</div>`;
+
+  function statusCard(st) {
+    if (!st) return `<div class="loading">読み込み中…</div>`;
+    const used = st.limitBytes ? `${fmtBytes(st.usedBytes)} / ${fmtBytes(st.limitBytes)}` : fmtBytes(st.usedBytes);
+    return `
+      <div class="st-head lv-${st.level}">
+        <span class="pill"><i class="dot"></i>${esc(st.label)}</span>
+        <span class="muted" style="font-size:.82rem">混み具合 ${st.score} / 100</span>
+      </div>
+      <div class="gauge lv-${st.level}"><i style="width:${Math.max(3, st.score)}%"></i></div>
+      <div class="tiles">
+        ${tile("リクエスト (直近1分)", num(st.reqLastMin), "件")}
+        ${tile("平均の応答時間", num(st.avgMs) + " ms", "直近5分")}
+        ${tile("接続中のリアルタイム通信", num(st.clients), "人・台")}
+        ${tile("処理中のリクエスト", num(st.activeReqs), "件")}
+        ${tile("処理の遅れ", num(st.lagMs) + " ms", st.lagMs < 20 ? "余裕あり" : st.lagMs < 80 ? "少し忙しい" : "忙しい")}
+        ${tile("リクエスト (1時間)", num(st.reqLastHour), "件")}
+        ${tile("リクエスト (24時間)", num(st.req24h), "件")}
+        ${tile("稼働時間", fmtUp(st.uptimeSec), "起動してから")}
+        ${tile("メモリ", num(st.rssMB) + " MB", "使用中")}
+        ${tile("プロジェクト数", num(st.projects), "サーバー全体")}
+        ${tile("保存先", st.storage === "supabase" ? "Supabase" : "サーバー内", st.storage === "supabase" ? "再起動しても残る" : "再起動で消えることも")}
+        ${tile("画像・動画の容量", used, st.maxFileBytes ? "1ファイル " + fmtBytes(st.maxFileBytes) + " まで" : "")}
+      </div>
+      ${bars(st.series, "リクエスト数 (1分ごと・直近60分)")}
+      <p class="hint">混み具合は、処理の遅れ・1分あたりのリクエスト数・接続数・処理中の数から計算しています。集計は、サーバーが起動してからの分です。</p>`;
+  }
+
+  function miniPanel(st) {
+    if (!st) return `<div class="mini-head"><span>サーバー情報</span></div><div class="muted" style="font-size:.8rem">読み込み中…</div>`;
+    return `
+      <div class="mini-head"><span>サーバー情報</span><span>詳しく ›</span></div>
+      <div class="lv-${st.level}"><span class="pill"><i class="dot"></i>${esc(st.label)}</span></div>
+      <div class="gauge lv-${st.level}"><i style="width:${Math.max(3, st.score)}%"></i></div>
+      <div class="mini-rows">
+        <div><span class="muted">リクエスト/分</span><b>${num(st.reqLastMin)}</b></div>
+        <div><span class="muted">応答時間</span><b>${num(st.avgMs)} ms</b></div>
+        <div><span class="muted">接続中</span><b>${num(st.clients)}</b></div>
+        <div><span class="muted">稼働</span><b>${fmtUp(st.uptimeSec)}</b></div>
+      </div>
+      <div class="mini-chart">${miniBars(st.series)}</div>`;
+  }
+
+  // ======== サーバーとの通信 ========
+  let sessionPromise = null;
+  async function ensureSession(force) {
+    if (S.token && !force) return;
+    if (sessionPromise) return sessionPromise;
+    sessionPromise = (async () => {
+      const u = acctUser || GakuAcct.user();
+      if (!u) throw new Error("ログインしてください");
+      diag("セッション: GAKU acct に確認コードを要求");
+      const code = await freshProof();
+      diag(`確認コード: ${code ? code.length + "桁を取得" : "届かなかった"}`);
+      if (!code) throw new Error("GAKU acct から確認コードが届きませんでした。いったんログアウトして、もう一度ログインしてからお試しください。");
+      const { code: _drop, ...user } = u;
+      const r = await fetch("/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, code }) });
+      const body = await r.json().catch(() => ({}));
+      diag(`サーバーの応答: ${r.status}` + (r.ok ? "" : ` ${body.error || ""}`));
+      if (!r.ok) throw new Error(body.error || "ログインを確認できませんでした");
+      S.token = body.token;
+      S.sessionName = body.name;
+    })().finally(() => { sessionPromise = null; });
+    return sessionPromise;
+  }
+
+  async function call(method, url, body, opts = {}) {
+    await ensureSession(false);
+    const run = () => fetch(url, {
+      method,
+      headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), "X-Session": S.token },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    let r = await run();
+    if (r.status === 401) { // ログインの有効期限切れ (サーバーの再起動など) → 自動でやり直す
+      S.token = "";
+      await ensureSession(true);
+      r = await run();
+    }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(data.error || "うまくいきませんでした"); e.status = r.status; throw e; }
+    return data;
+  }
+
+  // ======== 小さな通知・コピー ========
+  let toastTimer = 0;
+  function toast(msg, bad) {
+    document.querySelectorAll(".toast").forEach((t) => t.remove());
+    const t = document.createElement("div");
+    t.className = "toast glass" + (bad ? " bad" : "");
+    t.textContent = msg;
+    document.body.append(t);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.remove(), bad ? 4500 : 2200);
+  }
+  async function copyText(text, okMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+      document.body.append(ta); ta.select();
+      try { document.execCommand("copy"); } catch { toast("コピーできませんでした。手動で選択してコピーしてください", true); ta.remove(); return; }
+      ta.remove();
+    }
+    toast(okMsg || "コピーしました");
+  }
+
+  // ======== 画面の組み立て ========
+  const ICON = {
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg>',
+    data: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>',
+  };
+
+  function renderHero() {
+    const name = S.user ? userLabel(S.user) : "";
+    $("hero").innerHTML = `<div class="avatar">${esc(initial(name))}</div><div><div class="hero-sub">ログイン中のアカウント</div><div class="hero-name">${esc(name)}</div></div>`;
+  }
+
+  function renderHome() {
+    const list = S.projects;
+    $("view").innerHTML = `
+      <section class="glass card" id="homeStatus">${statusCard(S.status)}</section>
+      <div class="sect-title"><h2>プロジェクト</h2><button class="btn primary sm" data-act="new">＋ 新しく作る</button></div>
+      ${list == null ? `<div class="loading">読み込み中…</div>` :
+        list.length === 0 ? `<div class="glass card empty">まだプロジェクトがありません。<br>右上の「＋」から、最初のプロジェクトを作りましょう。</div>` :
+        `<div class="pgrid">${list.map((p) => `
+          <button class="glass pcard" data-act="open" data-pid="${p.id}">
+            <span class="pn">${esc(p.name)}</span>
+            <span class="muted" style="font-size:.78rem">作成 ${fmtDate(p.createdAt)}</span>
+            <span class="chips"><span class="chip">データ ${num(p.dataCount)}</span><span class="chip">ファイル ${num(p.fileCount)}</span><span class="chip">有効なキー ${num(p.keysActive)}</span></span>
+          </button>`).join("")}</div>`}`;
+  }
+
+  function renderCreate() {
+    const def = `${userLabel(S.user)}のプロジェクト`;
+    $("view").innerHTML = `
+      <section class="glass card" style="max-width:560px">
+        <h2>新しいプロジェクト</h2>
+        <p class="lead">プロジェクトごとに、APIキーとデータが分かれます。</p>
+        <div style="margin-top:18px"><label for="newName">プロジェクトの名前</label>
+        <input id="newName" value="${esc(def)}" maxlength="50" autocomplete="off"></div>
+        <p class="err" id="createErr" hidden></p>
+        <div style="margin-top:18px"><button class="btn primary big" id="createBtn" data-act="create">プロジェクトを作成</button></div>
+        <div style="margin-top:8px;text-align:center"><button class="btn ghost" data-act="home">キャンセル</button></div>
+      </section>`;
+    const inp = $("newName"); inp.focus(); inp.select();
+  }
+
+  function renderProject() {
+    const p = S.project;
+    if (!p) { $("view").innerHTML = `<div class="loading">読み込み中…</div>`; return; }
+    $("view").innerHTML = `
+      <div class="pview">
+        <nav class="side glass" aria-label="プロジェクトのメニュー">
+          <div class="side-top" id="sideTop"></div>
+          <button class="menu-item" data-act="tab" data-tab="keys">${ICON.key}APIキー</button>
+          <button class="menu-item" data-act="tab" data-tab="data">${ICON.data}サーバーデータ</button>
+          <button class="menu-item" data-act="tab" data-tab="info">${ICON.info}サーバー情報</button>
+          <div class="mini" id="mini" data-act="tab" data-tab="info" role="button" tabindex="0" aria-label="サーバー情報を詳しく見る">${miniPanel(S.status)}</div>
+        </nav>
+        <section class="content" id="content"></section>
+      </div>`;
+    renderSideTop();
+    renderTab();
+  }
+
+  function renderSideTop() {
+    const p = S.project; if (!p || !$("sideTop")) return;
+    $("sideTop").innerHTML = S.renaming
+      ? `<input class="pname-input" id="renameInput" value="${esc(p.name)}" maxlength="50"><button class="icon-btn" data-act="renameSave" title="保存">✓</button><button class="icon-btn" data-act="renameCancel" title="やめる">✕</button>`
+      : `<button class="icon-btn" data-act="home" title="プロジェクトの一覧へ" aria-label="プロジェクトの一覧へ">‹</button><div class="pname">${esc(p.name)}</div><button class="icon-btn" data-act="rename" title="名前を変える" aria-label="名前を変える">✎</button>`;
+    if (S.renaming) { const i = $("renameInput"); i.focus(); i.select(); }
+  }
+
+  function renderTab() {
+    document.querySelectorAll(".menu-item").forEach((b) => b.classList.toggle("on", b.dataset.tab === S.tab));
+    if (S.tab === "keys") renderKeys();
+    else if (S.tab === "data") renderData();
+    else renderInfo();
+  }
+
+  // ---- APIキー ----
+  function keyRows(type) {
+    const ks = S.project.keys.filter((k) => k.type === type);
+    if (!ks.length) return `<p class="hint">キーがありません。「新しく作成」で作れます。</p>`;
+    return ks.map((k) => `
+      <div class="krow${k.active ? "" : " off"}">
+        <div style="min-width:0">
+          <div class="klabel">${esc(k.label || (type === "secret" ? "Secret キー" : "Public キー"))}<span class="st ${k.active ? "on" : "off"}">${k.active ? "有効" : "停止中"}</span></div>
+          <code class="kval">${S.revealed.has(k.id) ? esc(k.value) : esc(mask(k.value))}</code>
+        </div>
+        <div class="kbtns">
+          <button class="btn sm" data-act="reveal" data-kid="${k.id}">${S.revealed.has(k.id) ? "隠す" : "表示"}</button>
+          <button class="btn sm" data-act="copykey" data-kid="${k.id}">コピー</button>
+          <button class="btn sm ${k.active ? "danger" : ""}" data-act="togglekey" data-kid="${k.id}">${k.active ? "停止" : "再開"}</button>
+        </div>
+      </div>`).join("");
+  }
+
+  function promptText(withKeys) {
+    const p = S.project;
+    const pub = withKeys && p.keys.find((k) => k.type === "public" && k.active);
+    const sec = withKeys && p.keys.find((k) => k.type === "secret" && k.active);
+    const PK = pub ? pub.value : "pk_ここにPublicキー";
+    const SK = sec ? sec.value : "sk_ここにSecretキー";
+    return [
+      "あなたは、共有データ用サーバー「SerBANK」のAPIを使うプログラムを書きます。以下の仕様どおりに使ってください。",
+      "",
+      "【基本】",
+      "- ベースURL: " + BASE,
+      "- プロジェクト: " + p.name,
+      "- 形式: すべて JSON (画像・動画のアップロードを除く)。文字コードは UTF-8。",
+      "- APIキーは2種類あり、必ずヘッダーに付けます。どちらの形でも使えます。",
+      "    X-API-Key: <キー>",
+      "    Authorization: Bearer <キー>",
+      "- Public キー (読み取り専用・公開してよい): " + PK,
+      "    データと画像の一覧・取得だけができます。ブラウザで動くHTML/JavaScriptに書いてよいのは、このキーだけです。",
+      "- Secret キー (読み書き・絶対に公開しない): " + SK,
+      "    書き込み・削除・画像のアップロードができます。公開するHTMLやコードには書かず、サーバー側のプログラムだけで使ってください。",
+      "- キーが無い・間違い・停止中のときは 401、Public キーで書き込もうとすると 403 が返ります。",
+      "- 他のサイトのブラウザ(JavaScript の fetch)からも呼べます (CORS対応)。",
+      "",
+      "【文字・数値・JSONデータ】 名前(キー)ごとに値を1つ保存します。名前は1〜100文字。値は JSON なら何でもよく、1回のサイズは64KBまで。1プロジェクトに1000件まで。",
+      "- 全部読む  (Public/Secret):  GET " + BASE + "/api/v1/data",
+      "     → {\"名前\": {\"value\": 値, \"updatedAt\": 時刻(ミリ秒), \"updatedBy\": 更新したキーの名前}, ...}",
+      "- 1つ読む   (Public/Secret):  GET " + BASE + "/api/v1/data/名前   (無ければ 404)",
+      "- 書く       (Secret):         PUT " + BASE + "/api/v1/data/名前   ボディ {\"value\": 任意のJSON}  (Content-Type: application/json)",
+      "- 消す       (Secret):         DELETE " + BASE + "/api/v1/data/名前",
+      "- 名前に日本語や記号を使うときは、URLエンコードしてください。",
+      "",
+      "【画像・動画】 PNG / JPEG / GIF / WebP / AVIF / MP4 / MOV / WebM に対応。1ファイル最大50MB。",
+      "- アップロード (Secret): POST " + BASE + "/api/v1/files",
+      "    ボディにファイルそのもの(バイナリ)を送ります。ヘッダーに X-File-Name: URLエンコードしたファイル名 を付けます。",
+      "    成功すると 201 で {\"id\", \"url\": \"/files/xxxx\", \"name\", \"type\", \"size\"} が返ります。",
+      "- 表示: 返ってきた url の先頭に " + BASE + " を付けて、<img src> や <video src> に使います (例 " + BASE + "/files/xxxx)。この表示にキーは要りません。",
+      "- 一覧 (Public/Secret): GET " + BASE + "/api/v1/files    1つの情報: GET " + BASE + "/api/v1/files/{id}",
+      "- 削除 (Secret): DELETE " + BASE + "/api/v1/files/{id}",
+      "- 画像をデータにも載せたいときは、アップロード後に PUT /api/v1/data/名前 へ {\"value\": {\"type\": \"image\", \"url\": \"" + BASE + "/files/xxxx\", \"name\": \"ファイル名\"}} (動画は type を \"video\") と保存してください。",
+      "",
+      "【リアルタイムに受け取る (WebSocket・読み取り専用)】",
+      "- 接続先: " + BASE.replace(/^http/, "ws") + "/?key=<Publicキー または Secretキー>",
+      "- 接続直後に {\"type\":\"init\",\"data\":{...このプロジェクトの全データ...}} が届き、その後は更新のたびに",
+      "  {\"type\":\"update\",\"key\":\"名前\",\"entry\":{\"value\":...,\"updatedAt\":...,\"updatedBy\":...}} や {\"type\":\"delete\",\"key\":\"名前\"} が届きます。",
+      "- キーが停止されると、接続は切れます。書き込みは、上の REST API (Secret キーの PUT) を使ってください。",
+      "",
+      "【エラー】 失敗時は {\"error\": \"理由\"} が返ります。",
+      "- 401: キーが無い/間違い/停止中  - 403: Public キーでは書き込めない  - 404: 存在しない",
+      "- 413: データまたはファイルが大きすぎる  - 415: 対応していない種類のファイル  - 507: 容量や件数がいっぱい",
+      "",
+      "【例 (curl)】",
+      "curl -X PUT " + BASE + "/api/v1/data/memo -H \"Content-Type: application/json\" -H \"X-API-Key: " + SK + "\" -d '{\"value\":\"こんにちは\"}'",
+      "curl " + BASE + "/api/v1/data/memo -H \"X-API-Key: " + PK + "\"",
+      "curl -X POST " + BASE + "/api/v1/files -H \"X-API-Key: " + SK + "\" -H \"X-File-Name: cat.png\" --data-binary @cat.png",
+      "",
+      "【例 (ブラウザのJavaScript。Public キーだけを使う)】",
+      "const r = await (await fetch(\"" + BASE + "/api/v1/data/memo\", { headers: { \"X-API-Key\": \"" + PK + "\" } })).json(); // r.value",
+      "const ws = new WebSocket(\"" + BASE.replace(/^http/, "ws") + "/?key=" + PK + "\"); ws.onmessage = (e) => console.log(JSON.parse(e.data));",
+      "",
+      "上の仕様に沿って、私がこれから頼むプログラムを書いてください。"
+    ].join("\n");
+  }
+
+  function renderKeys() {
+    $("content").innerHTML = `
+      <div><h2>APIキー</h2><p class="lead">他のサイトやプログラムから、このプロジェクトのデータを使うための鍵です。</p></div>
+      <section class="glass card">
+        <div class="kcard-head">
+          <div><h3>Public キー<span class="badge pub">公開してOK</span></h3><p class="lead">読み取り専用です。ブラウザで動くページに入れても、データを書き換えられる心配はありません。</p></div>
+          <button class="btn primary sm" data-act="newkey" data-type="public">＋ 新しく作成</button>
+        </div>
+        ${keyRows("public")}
+      </section>
+      <section class="glass card secret-card">
+        <div class="kcard-head">
+          <div><h3>Secret キー<span class="badge sec">絶対に公開しない</span></h3><p class="lead">読み書きと、画像のアップロードができます。</p></div>
+          <button class="btn primary sm" data-act="newkey" data-type="secret">＋ 新しく作成</button>
+        </div>
+        <div class="warnbox">Secret キーは、公開するHTML・GitHub・SNS・AIとのチャットに載せないでください。漏れたときは、そのキーを「停止」して、新しく作り直します。</div>
+        ${keyRows("secret")}
+      </section>
+      <section class="glass card aiprompt">
+        <h3>AIに使い方を伝える文章</h3>
+        <p class="lead">ChatGPT・Claude・Gemini などのAIに貼り付けると、このプロジェクトのAPIの使い方が伝わります。</p>
+        <pre id="aiPrompt">${esc(promptText(false))}</pre>
+        <div class="row">
+          <button class="btn primary" data-act="copyprompt">この文章をコピー</button>
+          <button class="btn" data-act="copypromptkey">キー入りでコピー (注意)</button>
+        </div>
+        <p class="hint">「キー入り」には Secret キーも入ります。信頼できるAIにだけ貼り、他の人には見せないでください。</p>
+      </section>`;
+  }
+
+  // ---- サーバーデータ ----
+  function renderData() {
+    const d = S.dataObj, f = S.filesArr;
+    const entries = d ? Object.entries(d).sort((a, b) => b[1].updatedAt - a[1].updatedAt) : [];
+    dataKeys = entries.map((e) => e[0]);
+    $("content").innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div><h2>サーバーデータ</h2><p class="lead">このプロジェクトのサーバーに保存されているデータです。</p></div>
+        <button class="btn sm" data-act="refresh">更新</button>
+      </div>
+      <section class="glass card">
+        <div class="seg" role="tablist">
+          <button class="${S.dtab === "data" ? "on" : ""}" data-act="dtab" data-d="data">データ (${d ? entries.length : "…"})</button>
+          <button class="${S.dtab === "files" ? "on" : ""}" data-act="dtab" data-d="files">画像・動画 (${f ? f.length : "…"})</button>
+        </div>
+        <div id="dataBody">${S.dtab === "data" ? dataList(entries) : fileGrid(f)}</div>
+      </section>`;
+  }
+  function dataList(entries) {
+    if (S.dataObj == null) return `<div class="loading">読み込み中…</div>`;
+    if (!entries.length) return `<div class="empty">データはまだありません。<br>Secret キーで書き込むと、ここに表示されます。</div>`;
+    return `<div class="dlist">${entries.map(([k, e], i) => {
+      let v = typeof e.value === "string" ? e.value : JSON.stringify(e.value);
+      if (v.length > 240) v = v.slice(0, 240) + "…";
+      return `<div class="drow"><div><div class="dk">${esc(k)}</div><div class="dv">${esc(v)}</div><div class="muted" style="font-size:.72rem">${esc(e.updatedBy || "")} · ${fmtTime(e.updatedAt)}</div></div><button class="btn sm danger" data-act="delentry" data-i="${i}">削除</button></div>`;
+    }).join("")}</div>`;
+  }
+  function fileGrid(f) {
+    if (f == null) return `<div class="loading">読み込み中…</div>`;
+    if (!f.length) return `<div class="empty">画像・動画はまだありません。<br>Secret キーでアップロードすると、ここに表示されます。</div>`;
+    return `<div class="fgrid">${f.map((x) => `
+      <div class="fcard">
+        <div class="th">${x.type.startsWith("video/") ? `<video src="${esc(x.url)}#t=0.1" preload="metadata" muted playsinline controls></video>` : `<img src="${esc(x.url)}" alt="${esc(x.name)}" loading="lazy">`}</div>
+        <div class="fi"><div class="fn" title="${esc(x.name)}">${esc(x.name)}</div><div class="fm">${fmtBytes(x.size)} · ${fmtTime(x.createdAt)}</div></div>
+        <div class="fb"><button class="btn sm" data-act="copyurl" data-id="${x.id}">URLをコピー</button><button class="btn sm danger" data-act="delfile" data-id="${x.id}">削除</button></div>
+      </div>`).join("")}</div>`;
+  }
+
+  async function refreshData(quiet) {
+    if (!S.pid) return;
+    try {
+      const [d, f] = await Promise.all([call("GET", `/api/projects/${S.pid}/data`), call("GET", `/api/projects/${S.pid}/files`)]);
+      const changed = JSON.stringify([d, f]) !== JSON.stringify([S.dataObj, S.filesArr]);
+      S.dataObj = d; S.filesArr = f;
+      if (changed && S.view === "project" && S.tab === "data") renderData();
+    } catch (e) { if (!quiet) toast(e.message, true); }
+  }
+
+  // ---- サーバー情報 (くわしく) ----
+  function renderInfo() {
+    const ps = S.pstats || (S.project && S.project.stats);
+    const proj = ps ? `
+      <div class="tiles">
+        ${tile("データの件数", num(ps.dataCount))}
+        ${tile("画像・動画", num(ps.fileCount) + " 件", fmtBytes(ps.fileBytes))}
+        ${tile("リクエスト (直近1分)", num(ps.reqLastMin), "件")}
+        ${tile("リクエスト (1時間)", num(ps.reqLastHour), "件")}
+        ${tile("リクエスト (24時間)", num(ps.req24h), "件")}
+        ${tile("平均の応答時間", num(ps.avgMs) + " ms", "直近5分")}
+        ${tile("リアルタイム接続", num(ps.clients), "いま")}
+        ${tile("有効なキー", `${num(ps.keysActive)} / ${num(ps.keysTotal)}`)}
+        ${tile("最後のアクセス", ps.lastAccessAt ? fmtTime(ps.lastAccessAt) : "まだありません")}
+        ${tile("作成日", fmtDate(S.project.createdAt))}
+      </div>${bars(ps.series, "このプロジェクトのリクエスト数 (1分ごと・直近60分)")}` : `<div class="loading">読み込み中…</div>`;
+    $("content").innerHTML = `
+      <div><h2>サーバー情報</h2><p class="lead">あなたのサーバー(プロジェクト)と、サーバー全体の状態です。5秒ごとに自動で更新されます。</p></div>
+      <section class="glass card" id="infoProject"><h3 style="margin-bottom:2px">このプロジェクト</h3>${proj}</section>
+      <section class="glass card" id="infoServer"><h3 style="margin-bottom:10px">サーバー全体の状態</h3>${statusCard(S.status)}</section>`;
+  }
+
+  // ======== 画面の切り替え ========
+  function parseHash() {
+    const h = location.hash.replace(/^#\/?/, "");
+    if (h === "new") return { view: "create" };
+    const m = /^p\/([0-9a-f]{12})(?:\/(keys|data|info))?$/.exec(h);
+    if (m) return { view: "project", pid: m[1], tab: m[2] || "keys" };
+    return { view: "home" };
+  }
+  function go(hash) {
+    if (location.hash === hash || (hash === "#/" && !location.hash)) route();
+    else location.hash = hash;
+  }
+
+  async function route() {
+    if (!S.user) return;
+    const r = parseHash();
+    const prevPid = S.pid;
+    S.view = r.view;
+    S.renaming = false;
+    $("plusBtn").hidden = false;
+    if (r.view === "project") {
+      S.tab = r.tab;
+      if (S.pid !== r.pid || !S.project) {
+        S.pid = r.pid; S.project = null; S.pstats = null; S.dataObj = null; S.filesArr = null; S.revealed = new Set();
+        renderProject();
+        try {
+          S.project = await call("GET", `/api/projects/${r.pid}`);
+        } catch (e) {
+          if (parseHash().pid !== r.pid) return;
+          S.pid = null; toast(e.status === 404 ? "そのプロジェクトは見つかりません" : e.message, true);
+          return go("#/");
+        }
+        if (parseHash().pid !== r.pid) return;
+        S.pstats = S.project.stats;
+        poll();
+      }
+      renderProject();
+      if (S.tab === "data") refreshData(false);
+    } else {
+      S.pid = null; S.project = null;
+      if (r.view === "create") renderCreate();
+      else { renderHome(); loadProjects(); }
+    }
+  }
+
+  async function loadProjects() {
+    try {
+      S.projects = await call("GET", "/api/projects");
+      if (S.view === "home") renderHome();
+    } catch (e) { toast(e.message, true); }
+  }
+
+  // 5秒ごとにサーバーの状態を取り直して、見えている部分だけ更新する
+  async function poll() {
+    if (!S.user || !S.token || document.hidden) return;
+    try {
+      const q = S.view === "project" && S.pid ? `?project=${S.pid}` : "";
+      const r = await call("GET", "/api/status" + q);
+      S.status = r.server;
+      if (r.project) S.pstats = r.project;
+      if ($("mini")) $("mini").innerHTML = miniPanel(S.status);
+      if ($("homeStatus")) $("homeStatus").innerHTML = statusCard(S.status);
+      if (S.view === "project" && S.tab === "info" && $("infoServer")) {
+        $("infoServer").innerHTML = `<h3 style="margin-bottom:10px">サーバー全体の状態</h3>${statusCard(S.status)}`;
+        const ip = $("infoProject");
+        if (ip) { const keep = ip.scrollTop; renderInfo(); ip.scrollTop = keep; }
+      }
+      if (S.view === "project" && S.tab === "data") refreshData(true);
+    } catch {}
+  }
+  setInterval(poll, 5000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+
+  // ======== ボタンの動作 ========
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-act]");
+    if (!el) return;
+    const act = el.dataset.act;
+    const kid = el.dataset.kid;
+    try {
+      if (act === "home") return go("#/");
+      if (act === "new") return go("#/new");
+      if (act === "open") return go(`#/p/${el.dataset.pid}/keys`);
+      if (act === "tab") return go(`#/p/${S.pid}/${el.dataset.tab}`);
+      if (act === "create") return createProject();
+      if (act === "rename") { S.renaming = true; return renderSideTop(); }
+      if (act === "renameCancel") { S.renaming = false; return renderSideTop(); }
+      if (act === "renameSave") return saveRename();
+      if (act === "reveal") { S.revealed.has(kid) ? S.revealed.delete(kid) : S.revealed.add(kid); return renderKeys(); }
+      if (act === "copykey") { const k = S.project.keys.find((x) => x.id === kid); return copyText(k.value, k.type === "secret" ? "Secret キーをコピーしました。公開しないでください" : "Public キーをコピーしました"); }
+      if (act === "togglekey") return toggleKey(kid);
+      if (act === "newkey") return newKey(el.dataset.type, el);
+      if (act === "copyprompt") return copyText(promptText(false), "文章をコピーしました");
+      if (act === "copypromptkey") return copyText(promptText(true), "キー入りの文章をコピーしました。他の人には見せないでください");
+      if (act === "dtab") { S.dtab = el.dataset.d; return renderData(); }
+      if (act === "refresh") { await refreshData(false); return toast("更新しました"); }
+      if (act === "copyurl") return copyText(BASE + "/files/" + el.dataset.id, "URLをコピーしました");
+      if (act === "delentry") {
+        const key = dataKeys[Number(el.dataset.i)];
+        if (key == null || !confirm(`「${key}」を削除しますか?`)) return;
+        await call("DELETE", `/api/projects/${S.pid}/data/${encodeURIComponent(key)}`);
+        toast("削除しました"); return refreshData(false);
+      }
+      if (act === "delfile") {
+        if (!confirm("この画像・動画を削除しますか? 元に戻せません")) return;
+        await call("DELETE", `/api/projects/${S.pid}/files/${el.dataset.id}`);
+        toast("削除しました"); return refreshData(false);
+      }
+    } catch (err) { toast(err.message, true); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.id === "newName") { e.preventDefault(); createProject(); }
+    else if (e.key === "Enter" && e.target.id === "renameInput") { e.preventDefault(); saveRename(); }
+    else if (e.key === "Escape" && e.target.id === "renameInput") { S.renaming = false; renderSideTop(); }
+    else if ((e.key === "Enter" || e.key === " ") && e.target.id === "mini") { e.preventDefault(); go(`#/p/${S.pid}/info`); }
+  });
+
+  async function createProject() {
+    const btn = $("createBtn"), err = $("createErr");
+    err.hidden = true; btn.disabled = true; btn.textContent = "作成中…";
+    try {
+      const p = await call("POST", "/api/projects", { name: $("newName").value });
+      S.projects = null;
+      toast("プロジェクトを作成しました");
+      S.project = null; S.pid = null;
+      go(`#/p/${p.id}/keys`);
+    } catch (e) {
+      err.textContent = e.message; err.hidden = false;
+      btn.disabled = false; btn.textContent = "プロジェクトを作成";
+    }
+  }
+
+  async function saveRename() {
+    const name = $("renameInput").value.trim();
+    if (!name) return toast("プロジェクト名を入力してください", true);
+    try {
+      const p = await call("PATCH", `/api/projects/${S.pid}`, { name });
+      S.project = p; S.renaming = false; S.projects = null;
+      renderSideTop();
+      if (S.tab === "keys") renderKeys();
+      toast("名前を変えました");
+    } catch (e) { toast(e.message, true); }
+  }
+
+  async function toggleKey(kid) {
+    const k = S.project.keys.find((x) => x.id === kid);
+    if (k.active && !confirm(`このキーを停止しますか?\nこのキーを使っているプログラムやサイトは、すぐに動かなくなります。(あとで再開できます)`)) return;
+    const rec = await call("PATCH", `/api/projects/${S.pid}/keys/${kid}`, { active: !k.active });
+    Object.assign(k, rec);
+    renderKeys();
+    toast(rec.active ? "キーを再開しました" : "キーを停止しました");
+  }
+
+  async function newKey(type, btn) {
+    btn.disabled = true;
+    try {
+      const rec = await call("POST", `/api/projects/${S.pid}/keys`, { type });
+      S.project.keys.push(rec);
+      S.revealed.add(rec.id);
+      renderKeys();
+      toast(`新しい${type === "secret" ? "Secret" : "Public"}キーを作成しました`);
+    } finally { btn.disabled = false; }
+  }
+
+  // ======== アカウント連携 (GAKU acct) ========
   function userLabel(u) {
     return u && (u.name || u.email || u.id) ? String(u.name || u.email || u.id) : "ログイン中";
   }
@@ -164,28 +894,47 @@ var GakuAcct = (function () {
   let acctUser = null; // ログイン中のアカウント情報
 
   function showLogin(u) {
+    const same = acctUser && userLabel(acctUser) === userLabel(u) && S.user;
     acctUser = u;
-    $("whoami").textContent = `${userLabel(u)} としてログイン中`;
-    keybox.hidden = false;
+    if (same) return;
+    S.user = u; S.token = ""; S.projects = null; S.project = null; S.pid = null; S.status = null;
+    renderHero();
+    $("shell").classList.remove("solo");
+    $("stage").hidden = false;
+    $("plusBtn").hidden = false;
+    $("view").innerHTML = `<div class="loading">アカウントを確認しています…</div>`;
+    enter();
   }
   function hideLogin() {
-    acctUser = null;
-    rawProof = "";
-    keybox.hidden = true;
-    keyResult.hidden = true;
-    keyErr.hidden = true;
-    $("keyValue").textContent = "";
+    acctUser = null; rawProof = "";
+    S.user = null; S.token = ""; S.projects = null; S.project = null; S.pid = null; S.status = null;
+    $("stage").hidden = true;
+    $("plusBtn").hidden = true;
+    $("shell").classList.add("solo");
+    $("view").innerHTML = "";
   }
+
+  async function enter() {
+    try {
+      await ensureSession(false);
+      await poll();
+      await route();
+    } catch (e) {
+      $("view").innerHTML = `<section class="glass card" style="max-width:560px"><h3>ログインを確認できませんでした</h3><p class="err" style="margin-top:8px">${esc(e.message)}</p><div style="margin-top:14px"><button class="btn primary" id="retryBtn">もう一度やってみる</button></div></section>`;
+      $("retryBtn").onclick = () => { $("view").innerHTML = `<div class="loading">アカウントを確認しています…</div>`; enter(); };
+    }
+  }
+  window.addEventListener("hashchange", route);
+
   GakuAcct.onLogin(showLogin);
   GakuAcct.onLogout(hideLogin);
 
-  // 確認コードは5分で期限切れ&1回しか使えないので、発行の直前に GAKU acct から新しいコードをもらう
+  // 確認コードは5分で期限切れ&1回しか使えないので、使う直前に GAKU acct から新しいコードをもらう
   let proofWaiter = null;
   let rawProof = "", rawProofAt = 0; // 届いた確認コード (まだ使っていないもの)
   let gakuSource = null;             // GAKU acct が実際にメッセージを送ってきた窓
   let otherSeen = 0;                 // 診断用: GAKU acct 以外のメッセージを記録した数
 
-  // 埋め込み画面の中から届いたメッセージか (診断用)
   function inTree(w, src, depth) {
     if (depth > 6) return false;
     let n = 0; try { n = w.frames.length; } catch {}
@@ -208,7 +957,6 @@ var GakuAcct = (function () {
   window.addEventListener("message", (e) => {
     const d = e.data;
     if (!d || typeof d !== "object" || d.type !== "gakuacct") {
-      // 診断: GAKU acct 以外のメッセージも、何が届いているか記録する (多すぎないよう30件まで)
       if (otherSeen < 30 && !$("diagbox").hidden) {
         otherSeen++;
         let kind = typeof d;
@@ -218,7 +966,7 @@ var GakuAcct = (function () {
       return;
     }
     const code = String(d.code || "");
-    if (e.source) gakuSource = e.source; // 実際に送ってきた窓 (こちらからの問い合わせは、ここへ直接送れる)
+    if (e.source) gakuSource = e.source;
     diag(`受信: ${d.event}` + (d.event === "proof" ? ` (確認コード ${code.length}桁)` : "") +
       ` / 送信元 ${e.origin || "?"} / 埋め込み画面の中: ${fromMyFrames(e.source) ? "はい" : "いいえ"}`);
     if (d.event === "proof" && /^[0-9a-f]{64}$/.test(code)) {
@@ -226,12 +974,11 @@ var GakuAcct = (function () {
       else { rawProof = code; rawProofAt = Date.now(); }
     }
     // ログイン・ログアウトも、送信元の判定に頼らず受け取る。
-    // (偽の知らせでボタンが出ても、キーはサーバーが確認コードを検証してからしか発行しないので安全)
+    // (偽の知らせで画面が出ても、サーバーが確認コードを検証しない限り、何も作れない・見られないので安全)
     if (d.event === "login") showLogin(d);
     if (d.event === "logout") hideLogin();
   });
   function askProof() {
-    // 送ってきた窓が分かっているときは、そこへ直接問い合わせる (窓をたどるより確実)
     if (gakuSource) {
       try { gakuSource.postMessage({ type: "gakuacct-hello" }, "*"); diag("問い合わせ: 送ってきた窓へ直接送信"); return; }
       catch (err) { diag(`問い合わせ: 直接送信に失敗 (${err.message})`); }
@@ -250,7 +997,6 @@ var GakuAcct = (function () {
   }
   function freshProof() {
     return new Promise((resolve) => {
-      // ログイン直後に届いた新しいコードがあれば、それを使う (コードは5分・1回だけ有効)
       if (rawProof && Date.now() - rawProofAt < 240000) {
         const c = rawProof; rawProof = "";
         return resolve(c);
@@ -258,9 +1004,6 @@ var GakuAcct = (function () {
       rawProof = "";
       proofWaiter = resolve;
       askProof();
-
-      // 知らせが届かないときの別ルート: GAKU acct に「確認コードをください」と直接呼び出す
-      // (GAKU PAY 側の ACCT_FN に proof が登録されている場合だけ使える)
       setTimeout(() => {
         if (proofWaiter !== resolve) return;
         GakuAcct.call("proof").then((r) => {
@@ -269,8 +1012,6 @@ var GakuAcct = (function () {
           if (ok && proofWaiter === resolve) { proofWaiter = null; resolve(r.code); }
         });
       }, 3000);
-
-      // GAKU PAY (Google) の起動が遅いことがあるので、少し長めに待つ
       setTimeout(() => { if (proofWaiter === resolve) { proofWaiter = null; resolve(""); } }, 15000);
     });
   }
@@ -280,11 +1021,8 @@ var GakuAcct = (function () {
   // 普段は見えない。アドレスの末尾に ?diag=1 を付けて開いたときだけ表示する
   if (new URLSearchParams(location.search).get("diag") === "1") $("diagbox").hidden = false;
   function diag(text) {
-    const t = new Date().toLocaleTimeString("ja-JP");
-    diagBox.textContent += `${t}  ${text}\n`;
+    diagBox.textContent += `${new Date().toLocaleTimeString("ja-JP")}  ${text}\n`;
   }
-
-  // 診断: 埋め込み枠の読み込み完了と、窓の入れ子の深さを記録する
   function treeShape() {
     const levels = [];
     const walk = (w, depth) => {
@@ -298,51 +1036,6 @@ var GakuAcct = (function () {
   }
   document.querySelectorAll("iframe").forEach((f) => f.addEventListener("load", () => diag(`枠の読み込みが完了 (窓の階層: ${treeShape()})`)));
   [3000, 8000].forEach((ms) => setTimeout(() => diag(`${ms / 1000}秒後: 窓の階層 ${treeShape()} / GAKU acct からの受信 ${gakuSource ? "あり" : "なし"}`), ms));
-
-  $("issueKey").addEventListener("click", async () => {
-    keyErr.hidden = true;
-    const u = acctUser || GakuAcct.user();
-    if (!u) { keyErr.textContent = "ログインしてください。"; keyErr.hidden = false; return; }
-    const { code: _drop, ...user } = u;
-    $("issueKey").disabled = true;
-    $("issueKey").textContent = "確認中…";
-    try {
-      diag("発行ボタンが押された。GAKU acct に確認コードを要求");
-      const code = await freshProof();
-      diag(`確認コード: ${code ? code.length + "桁を取得" : "届かなかった"}`);
-      if (!code) {
-        throw new Error("GAKU acct から確認コードが届きませんでした。いったんログアウトして、もう一度ログインしてからお試しください。それでも出ない場合は、下の「診断情報」を教えてください。");
-      }
-      const r = await fetch("/api/keys", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, code }),
-      });
-      const body = await r.json();
-      diag(`サーバーの応答: ${r.status}` + (r.ok ? "" : ` ${body.error || ""}`));
-      if (!r.ok) throw new Error(body.error || "発行に失敗しました");
-      $("keyValue").textContent = body.key;
-      keyResult.hidden = false;
-    } catch (e) {
-      keyErr.textContent = e.message;
-      keyErr.hidden = false;
-    } finally {
-      $("issueKey").disabled = false;
-      $("issueKey").textContent = "APIキーを発行する";
-    }
-  });
-
-  $("copyKey").addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText($("keyValue").textContent);
-      $("copyKey").textContent = "コピーしました";
-      setTimeout(() => ($("copyKey").textContent = "コピー"), 1500);
-    } catch {
-      keyErr.textContent = "コピーできませんでした。手動で選択してコピーしてください。";
-      keyErr.hidden = false;
-    }
-  });
-
 })();
 </script>
 </body>
