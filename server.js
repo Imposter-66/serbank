@@ -1,6 +1,7 @@
 "use strict";
 
 const http = require("http");
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -13,6 +14,8 @@ const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, "data.json");
 const KEYS_FILE = path.join(DATA_DIR, "keys.json");
 const FILES_FILE = path.join(DATA_DIR, "files.json");
+const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
+const PDATA_FILE = path.join(DATA_DIR, "pdata.json");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 
 // ---- Supabase (無料で、再起動しても消えない保存先) ----
@@ -64,10 +67,25 @@ try {
   keys = {};
 }
 
+// ---- プロジェクト (アカウントごとに作る。APIキーとデータは、プロジェクトごとに分かれる) ----
+//   projDb.items[id] = { id, name, ownerUid, ownerName, createdAt, keys: { キーID: {id,type,label,value,active,createdAt,lastUsedAt} } }
+//   pdata[プロジェクトID] = { キー名: { value, updatedAt, updatedBy } }
+let projDb = { secret: "", items: {} };
+try {
+  Object.assign(projDb, JSON.parse(fs.readFileSync(PROJECTS_FILE, "utf8")));
+} catch {}
+let pdata = {};
+try {
+  pdata = JSON.parse(fs.readFileSync(PDATA_FILE, "utf8"));
+} catch {
+  pdata = {};
+}
+
 // ---- 保存 (Supabase があればそこへ、なければ DATA_DIR のファイルへ) ----
 // 「data」(共有データ)・「keys」(APIキーのハッシュ)・「files」(画像・動画の情報)の3つを、それぞれ丸ごと保存する。
-const PERSIST_FILES = { data: DATA_FILE, keys: KEYS_FILE, files: FILES_FILE };
-const snapshot = (name) => (name === "data" ? store : name === "keys" ? keys : files);
+const PERSIST_NAMES = ["data", "keys", "files", "projects", "pdata"];
+const PERSIST_FILES = { data: DATA_FILE, keys: KEYS_FILE, files: FILES_FILE, projects: PROJECTS_FILE, pdata: PDATA_FILE };
+const snapshot = (name) => ({ data: store, keys, files, projects: projDb, pdata })[name];
 
 function sbHeaders(extra = {}) {
   const h = { apikey: SUPABASE_KEY, ...extra };
@@ -154,7 +172,7 @@ function persistLater(name, delay = 300) {
 }
 
 async function flushAll() {
-  await Promise.all(["data", "keys", "files"].map((n) => flushOne(n).catch(() => {})));
+  await Promise.all(PERSIST_NAMES.map((n) => flushOne(n).catch(() => {})));
 }
 
 function scheduleSave() {
@@ -181,12 +199,14 @@ async function loadFromSupabase() {
     }
     if (!/already exists|Duplicate/i.test(e.body) && r.status !== 409) throw e;
   }
-  for (const name of ["data", "keys", "files"]) {
+  for (const name of PERSIST_NAMES) {
     const v = await sbLoad(name);
     if (!v || typeof v !== "object") continue;
     if (name === "data") store = Object.assign(Object.create(null), v);
     else if (name === "keys") keys = v;
-    else files = v;
+    else if (name === "files") files = v;
+    else if (name === "projects") projDb = Object.assign({ secret: "", items: {} }, v);
+    else pdata = v;
   }
 }
 
@@ -371,8 +391,8 @@ function deleteKey(key, by) {
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": CORS_ORIGIN,
-    "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key, X-File-Name",
+    "Access-Control-Allow-Methods": "GET, PUT, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key, X-File-Name, X-Session",
   };
 }
 
@@ -441,6 +461,7 @@ function serveFile(req, res, id) {
     return;
   }
   const meta = files[id];
+  if (meta.pid) res.pid = meta.pid;
   if (USE_SUPABASE) {
     serveFromSupabase(req, res, id, meta).catch(() => {
       if (!res.headersSent) res.writeHead(502).end("Bad Gateway");
@@ -489,9 +510,15 @@ function serveFile(req, res, id) {
 }
 
 // POST /api/files : 画像・動画を保存する (ボディにファイルそのものを送る)
-async function handleUpload(req, res) {
-  const who = identify(req);
-  if (keyRequired && !who) return sendJson(res, 401, { error: "APIキーが正しくありません" });
+async function handleUpload(req, res, ctx) {
+  // ctx があるとき (プロジェクトのSecretキー) は、そのプロジェクトのファイルとして保存する
+  let who;
+  if (ctx) {
+    who = { name: ctx.by, uid: ctx.uid };
+  } else {
+    who = identify(req);
+    if (keyRequired && !who) return sendJson(res, 401, { error: "APIキーが正しくありません" });
+  }
 
   const declared = Number(req.headers["content-length"] || 0);
   if (declared > MAX_FILE_BYTES) {
@@ -550,6 +577,7 @@ async function handleUpload(req, res) {
     uid: who ? who.uid || "" : "",
     createdAt: Date.now(),
   };
+  if (ctx) files[id].pid = ctx.pid;
   saveFiles();
   try {
     await flushOne("files");
@@ -612,6 +640,13 @@ async function handleApi(req, res, url) {
     return res.end();
   }
 
+  // プロジェクト用API (キーで認証)
+  if (url.pathname.startsWith("/api/v1/") || url.pathname === "/api/v1") return handleV1(req, res, url);
+  // 画面(コンソール)用API (ログインで認証)
+  if (url.pathname === "/api/session" || url.pathname === "/api/status" || url.pathname === "/api/projects" || url.pathname.startsWith("/api/projects/")) {
+    return handleConsole(req, res, url);
+  }
+
   // APIキーの発行: ログイン済みアカウントの情報と確認コードを送ると、そのユーザー用のキーを返す
   if (url.pathname === "/api/keys") {
     if (req.method !== "POST") return sendJson(res, 405, { error: "POST のみ使えます" });
@@ -642,13 +677,13 @@ async function handleApi(req, res, url) {
 
   // 画像・動画: 一覧 / アップロード / 削除
   if (url.pathname === "/api/files") {
-    if (req.method === "GET") return sendJson(res, 200, Object.keys(files).map(fileInfo));
+    if (req.method === "GET") return sendJson(res, 200, Object.keys(files).filter((i) => !files[i].pid).map(fileInfo));
     if (req.method === "POST" || req.method === "PUT") return handleUpload(req, res);
     return sendJson(res, 405, { error: "このメソッドは使えません" });
   }
   if (url.pathname.startsWith("/api/files/")) {
     const id = url.pathname.slice("/api/files/".length);
-    if (!FILE_ID_RE.test(id) || !Object.hasOwn(files, id)) return sendJson(res, 404, { error: "ファイルが存在しません" });
+    if (!FILE_ID_RE.test(id) || !Object.hasOwn(files, id) || files[id].pid) return sendJson(res, 404, { error: "ファイルが存在しません" });
     if (req.method === "GET") return sendJson(res, 200, fileInfo(id));
     if (req.method === "DELETE") {
       const who = identify(req);
@@ -717,6 +752,518 @@ async function handleApi(req, res, url) {
   return sendJson(res, 405, { error: "このメソッドは使えません" });
 }
 
+// =====================================================================
+// プロジェクト機能
+// =====================================================================
+const PROJECTS_PER_USER = 20;
+const KEYS_PER_TYPE = 10;
+const ENTRIES_PER_PROJECT = 1000;
+const SESSION_DAYS = 7;
+const PROJECT_ID_RE = /^[0-9a-f]{12}$/;
+
+const keyIndex = new Map(); // sha256(キー) → { pid, kid }
+
+function rebuildKeyIndex() {
+  keyIndex.clear();
+  for (const p of Object.values(projDb.items)) {
+    for (const k of Object.values(p.keys || {})) keyIndex.set(sha256(k.value), { pid: p.id, kid: k.id });
+  }
+}
+
+function initProjects() {
+  if (!projDb.items || typeof projDb.items !== "object") projDb.items = {};
+  if (!projDb.secret) {
+    projDb.secret = crypto.randomBytes(32).toString("base64url"); // ログインの確認用の秘密 (これでログイン情報の改ざんを防ぐ)
+    persistLater("projects", 0);
+  }
+  rebuildKeyIndex();
+}
+
+function makeKeyRec(type, label) {
+  return {
+    id: crypto.randomBytes(4).toString("hex"),
+    type,
+    label: String(label || "").trim().slice(0, 40),
+    value: (type === "secret" ? "sk_" : "pk_") + crypto.randomBytes(24).toString("base64url"),
+    active: true,
+    createdAt: Date.now(),
+    lastUsedAt: 0,
+  };
+}
+
+function addKey(p, type, label) {
+  const same = Object.values(p.keys).filter((k) => k.type === type);
+  const rec = makeKeyRec(type, label || `${type === "secret" ? "Secret" : "Public"} キー ${same.length + 1}`);
+  p.keys[rec.id] = rec;
+  keyIndex.set(sha256(rec.value), { pid: p.id, kid: rec.id });
+  return rec;
+}
+
+// データ用API: キーからプロジェクトを調べる。キーは X-API-Key か Authorization: Bearer。WebSocket だけは ?key= でも可
+function projectAuth(req, url, allowQuery) {
+  const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  const token = String(req.headers["x-api-key"] || bearer || (allowQuery ? url.searchParams.get("key") : "") || "");
+  const hit = token ? keyIndex.get(sha256(token)) : null;
+  const p = hit && projDb.items[hit.pid];
+  const k = p && p.keys[hit.kid];
+  if (!k) return { status: 401, error: "APIキーが正しくありません" };
+  if (!k.active) return { status: 401, error: "このキーは停止されています" };
+  k.lastUsedAt = Date.now();
+  return { p, k };
+}
+
+// ---- ログイン (確認コードで本人確認 → 7日間使える、改ざんできない合言葉を渡す) ----
+function signSession(uid, name) {
+  const body = Buffer.from(JSON.stringify({ uid, name, exp: Date.now() + SESSION_DAYS * 86400000 })).toString("base64url");
+  const sig = crypto.createHmac("sha256", projDb.secret).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function readSession(req) {
+  const [body, sig] = String(req.headers["x-session"] || "").split(".");
+  if (!body || !sig || !projDb.secret) return null;
+  const want = crypto.createHmac("sha256", projDb.secret).update(body).digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(want);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const d = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    return d.exp > Date.now() && d.uid ? { uid: String(d.uid), name: String(d.name || d.uid) } : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---- 混み具合・利用状況の集計 (サーバーが起動してからの分。再起動でリセットされる) ----
+class Meter {
+  constructor() {
+    this.min = new Map(); // 分 → { n, ms, err }
+    this.hour = new Map(); // 時 → n
+    this.lastAt = 0;
+  }
+  hit(ms, err) {
+    const now = Date.now();
+    const m = Math.floor(now / 60000);
+    const h = Math.floor(now / 3600000);
+    const e = this.min.get(m) || { n: 0, ms: 0, err: 0 };
+    e.n++;
+    e.ms += ms;
+    if (err) e.err++;
+    this.min.set(m, e);
+    this.hour.set(h, (this.hour.get(h) || 0) + 1);
+    this.lastAt = now;
+    if (this.min.size > 70) for (const k of this.min.keys()) if (k < m - 65) this.min.delete(k);
+    if (this.hour.size > 30) for (const k of this.hour.keys()) if (k < h - 25) this.hour.delete(k);
+  }
+  // 直近60分の、1分ごとのリクエスト数 (古い順)
+  series() {
+    const m = Math.floor(Date.now() / 60000);
+    const out = [];
+    for (let i = 59; i >= 0; i--) out.push((this.min.get(m - i) || { n: 0 }).n);
+    return out;
+  }
+  lastMinute() {
+    const sec = Date.now() / 1000;
+    const m = Math.floor(sec / 60);
+    // 直近60秒 = 今の分と前の分を、経過時間で按分
+    const cur = (this.min.get(m) || { n: 0 }).n;
+    const prev = (this.min.get(m - 1) || { n: 0 }).n;
+    const frac = (sec % 60) / 60;
+    return Math.round(cur + prev * (1 - frac));
+  }
+  recent(mins) {
+    const m = Math.floor(Date.now() / 60000);
+    let n = 0, ms = 0, err = 0;
+    for (let i = 0; i < mins; i++) {
+      const e = this.min.get(m - i);
+      if (e) { n += e.n; ms += e.ms; err += e.err; }
+    }
+    return { n, avgMs: n ? Math.round(ms / n) : 0, err };
+  }
+  last24h() {
+    const h = Math.floor(Date.now() / 3600000);
+    let n = 0;
+    for (let i = 0; i < 24; i++) n += this.hour.get(h - i) || 0;
+    return n;
+  }
+}
+
+const gMeter = new Meter();
+const pMeters = new Map();
+let activeReqs = 0;
+const startedAt = Date.now();
+
+function recordHit(pid, ms, err) {
+  gMeter.hit(ms, err);
+  if (pid) {
+    if (!pMeters.has(pid)) pMeters.set(pid, new Meter());
+    pMeters.get(pid).hit(ms, err);
+  }
+}
+
+// 処理の遅れ (イベントループの遅延)。サーバーが忙しいほど大きくなる
+let lagMs = 0;
+let lagLast = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  lagMs = lagMs * 0.7 + Math.max(0, now - lagLast - 500) * 0.3;
+  lagLast = now;
+}, 500).unref();
+
+function serverStatus() {
+  const clients = wss.clients.size;
+  const rpm = gMeter.lastMinute();
+  const score = Math.min(
+    100,
+    Math.round(Math.min(60, lagMs * 0.5) + Math.min(30, rpm / 10) + Math.min(10, clients / 5) + Math.min(20, activeReqs * 4))
+  );
+  const level = score < 20 ? "quiet" : score < 45 ? "normal" : score < 70 ? "busy" : "heavy";
+  const label = { quiet: "空いています", normal: "ふつう", busy: "やや混んでいます", heavy: "混み合っています" }[level];
+  const r5 = gMeter.recent(5);
+  const mem = process.memoryUsage();
+  return {
+    level,
+    label,
+    score,
+    uptimeSec: Math.round(process.uptime()),
+    startedAt,
+    storage: USE_SUPABASE ? "supabase" : "local",
+    clients,
+    activeReqs,
+    lagMs: Math.round(lagMs),
+    reqLastMin: rpm,
+    reqLastHour: gMeter.recent(60).n,
+    req24h: gMeter.last24h(),
+    series: gMeter.series(),
+    avgMs: r5.avgMs,
+    errors5m: r5.err,
+    rssMB: Math.round(mem.rss / 1048576),
+    heapMB: Math.round(mem.heapUsed / 1048576),
+    projects: Object.keys(projDb.items).length,
+    usedBytes: totalFileBytes(),
+    limitBytes: Number.isFinite(MAX_TOTAL_BYTES) ? MAX_TOTAL_BYTES : null,
+    maxFileBytes: Number.isFinite(MAX_FILE_BYTES) ? MAX_FILE_BYTES : null,
+    time: Date.now(),
+  };
+}
+
+function projectFiles(pid) {
+  return Object.keys(files).filter((id) => files[id].pid === pid);
+}
+
+function projectStats(p) {
+  const m = pMeters.get(p.id) || new Meter();
+  const fids = projectFiles(p.id);
+  const keysArr = Object.values(p.keys);
+  return {
+    dataCount: Object.keys(pdata[p.id] || {}).length,
+    fileCount: fids.length,
+    fileBytes: fids.reduce((n, id) => n + (files[id].size || 0), 0),
+    reqLastMin: m.lastMinute(),
+    reqLastHour: m.recent(60).n,
+    req24h: m.last24h(),
+    avgMs: m.recent(5).avgMs,
+    series: m.series(),
+    clients: projectClients(p.id),
+    keysActive: keysArr.filter((k) => k.active).length,
+    keysTotal: keysArr.length,
+    lastAccessAt: m.lastAt || 0,
+  };
+}
+
+function projectView(p, withStats) {
+  const v = {
+    id: p.id,
+    name: p.name,
+    ownerName: p.ownerName,
+    createdAt: p.createdAt,
+    keys: Object.values(p.keys).sort((a, b) => a.createdAt - b.createdAt),
+  };
+  if (withStats) v.stats = projectStats(p);
+  return v;
+}
+
+function projectSummary(p) {
+  const s = projectStats(p);
+  return { id: p.id, name: p.name, createdAt: p.createdAt, dataCount: s.dataCount, fileCount: s.fileCount, keysActive: s.keysActive };
+}
+
+function pset(pid, key, value, by) {
+  const d = pdata[pid] || (pdata[pid] = {});
+  d[key] = { value, updatedAt: Date.now(), updatedBy: by };
+  persistLater("pdata");
+  pbroadcast(pid, { type: "update", key, entry: d[key] });
+  return d[key];
+}
+
+function pdelete(pid, key, by) {
+  const d = pdata[pid];
+  if (!d || !Object.hasOwn(d, key)) return false;
+  delete d[key];
+  persistLater("pdata");
+  pbroadcast(pid, { type: "delete", key, by });
+  return true;
+}
+
+function decodeKeyName(raw) {
+  let key;
+  try {
+    key = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  return validKey(key) ? key : null;
+}
+
+const READ_ONLY_MSG = "公開用(Public)キーでは読み取りだけできます。書き込み・削除・アップロードには Secret キーを使ってください";
+
+// ---- データ用API: /api/v1/... (キーで認証。Public は読み取り、Secret は読み書き) ----
+async function handleV1(req, res, url) {
+  const auth = projectAuth(req, url, false);
+  if (auth.error) return sendJson(res, auth.status, { error: auth.error });
+  const { p, k } = auth;
+  res.pid = p.id;
+  const canWrite = k.type === "secret";
+  const rest = url.pathname.slice("/api/v1".length).replace(/\/+$/, "");
+
+  if (rest === "" || rest === "/me") {
+    return sendJson(res, 200, { project: { id: p.id, name: p.name }, keyType: k.type, canWrite });
+  }
+
+  if (rest === "/data") {
+    if (req.method !== "GET") return sendJson(res, 405, { error: "このパスでは GET のみ使えます" });
+    return sendJson(res, 200, pdata[p.id] || {});
+  }
+
+  if (rest.startsWith("/data/")) {
+    const key = decodeKeyName(rest.slice("/data/".length));
+    if (!key) return sendJson(res, 400, { error: "キーは1〜100文字で指定してください" });
+    const d = pdata[p.id] || {};
+    if (req.method === "GET") {
+      return Object.hasOwn(d, key) ? sendJson(res, 200, d[key]) : sendJson(res, 404, { error: "キーが存在しません" });
+    }
+    if (!["PUT", "POST", "DELETE"].includes(req.method)) return sendJson(res, 405, { error: "このメソッドは使えません" });
+    if (!canWrite) return sendJson(res, 403, { error: READ_ONLY_MSG });
+    const by = k.label || "api";
+    if (req.method === "DELETE") {
+      return pdelete(p.id, key, by) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "キーが存在しません" });
+    }
+    try {
+      const body = await readJsonBody(req);
+      if (body === null || typeof body !== "object" || !("value" in body)) {
+        return sendJson(res, 400, { error: 'ボディは {"value": ...} の形式で送ってください' });
+      }
+      if (!Object.hasOwn(d, key) && Object.keys(d).length >= ENTRIES_PER_PROJECT) {
+        return sendJson(res, 507, { error: `1つのプロジェクトに保存できるデータは${ENTRIES_PER_PROJECT}件までです` });
+      }
+      return sendJson(res, 200, pset(p.id, key, body.value, by));
+    } catch (e) {
+      return e.message === "too_large"
+        ? sendJson(res, 413, { error: "データが大きすぎます (上限64KB)" })
+        : sendJson(res, 400, { error: "JSONの形式が不正です" });
+    }
+  }
+
+  if (rest === "/files") {
+    if (req.method === "GET") return sendJson(res, 200, projectFiles(p.id).map(fileInfo));
+    if (req.method === "POST" || req.method === "PUT") {
+      if (!canWrite) return sendJson(res, 403, { error: READ_ONLY_MSG });
+      return handleUpload(req, res, { by: k.label || "api", uid: p.ownerUid, pid: p.id });
+    }
+    return sendJson(res, 405, { error: "このメソッドは使えません" });
+  }
+
+  if (rest.startsWith("/files/")) {
+    const id = rest.slice("/files/".length);
+    if (!FILE_ID_RE.test(id) || !Object.hasOwn(files, id) || files[id].pid !== p.id) {
+      return sendJson(res, 404, { error: "ファイルが存在しません" });
+    }
+    if (req.method === "GET") return sendJson(res, 200, fileInfo(id));
+    if (req.method === "DELETE") {
+      if (!canWrite) return sendJson(res, 403, { error: READ_ONLY_MSG });
+      await deleteProjectFile(id);
+      return sendJson(res, 200, { ok: true });
+    }
+    return sendJson(res, 405, { error: "このメソッドは使えません" });
+  }
+
+  return sendJson(res, 404, { error: "見つかりません" });
+}
+
+async function deleteProjectFile(id) {
+  delete files[id];
+  saveFiles();
+  await removeObject(id);
+  await flushOne("files").catch(() => {}); // 失敗しても、自動でやり直される
+}
+
+// ---- 画面用API: /api/session, /api/status, /api/projects... (ログインで認証) ----
+async function handleConsole(req, res, url) {
+  const route = url.pathname;
+
+  // ログイン: アカウントの確認コードを GAKU PAY で確かめて、合言葉(セッション)を渡す
+  if (route === "/api/session") {
+    if (req.method !== "POST") return sendJson(res, 405, { error: "POST のみ使えます" });
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch {
+      return sendJson(res, 400, { error: "JSONの形式が不正です" });
+    }
+    if (!body || typeof body !== "object") return sendJson(res, 400, { error: "ユーザー情報と確認コードを送ってください" });
+    let who;
+    try {
+      who = await verifyAccount(body.user && typeof body.user === "object" ? body.user : {}, String(body.code || ""));
+    } catch (e) {
+      return sendJson(res, 403, { error: e.message });
+    }
+    return sendJson(res, 200, { token: signSession(who.uid, who.name), uid: who.uid, name: who.name });
+  }
+
+  const me = readSession(req);
+  if (!me) return sendJson(res, 401, { error: "ログインが必要です", code: "session" });
+
+  const owned = (id) => {
+    const p = PROJECT_ID_RE.test(id) ? projDb.items[id] : null;
+    return p && p.ownerUid === me.uid ? p : null;
+  };
+
+  if (route === "/api/status") {
+    if (req.method !== "GET") return sendJson(res, 405, { error: "GET のみ使えます" });
+    const pid = url.searchParams.get("project");
+    const p = pid ? owned(pid) : null;
+    return sendJson(res, 200, { server: serverStatus(), project: p ? projectStats(p) : null });
+  }
+
+  if (route === "/api/projects") {
+    if (req.method === "GET") {
+      const mine = Object.values(projDb.items).filter((p) => p.ownerUid === me.uid).sort((a, b) => b.createdAt - a.createdAt);
+      return sendJson(res, 200, mine.map(projectSummary));
+    }
+    if (req.method === "POST") {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return sendJson(res, 400, { error: "JSONの形式が不正です" });
+      }
+      const mineCount = Object.values(projDb.items).filter((p) => p.ownerUid === me.uid).length;
+      if (mineCount >= PROJECTS_PER_USER) return sendJson(res, 507, { error: `作れるプロジェクトは${PROJECTS_PER_USER}個までです` });
+      const name = String((body && body.name) || "").trim().slice(0, 50) || `${me.name}のプロジェクト`;
+      const id = crypto.randomBytes(6).toString("hex");
+      const p = { id, name, ownerUid: me.uid, ownerName: me.name, createdAt: Date.now(), keys: {} };
+      addKey(p, "public", "Public キー 1");
+      addKey(p, "secret", "Secret キー 1");
+      projDb.items[id] = p;
+      persistLater("projects", 0);
+      try {
+        await flushOne("projects"); // 保存できてから、キーを渡す
+      } catch {
+        delete projDb.items[id];
+        rebuildKeyIndex();
+        return sendJson(res, 502, { error: "保存できませんでした。少し待ってから、もう一度お試しください" });
+      }
+      return sendJson(res, 201, projectView(p, true));
+    }
+    return sendJson(res, 405, { error: "このメソッドは使えません" });
+  }
+
+  const m = /^\/api\/projects\/([^/]+)(?:\/(.*))?$/.exec(route);
+  const p = m && owned(m[1]);
+  if (!p) return sendJson(res, 404, { error: "プロジェクトが見つかりません" });
+  const sub = (m[2] || "").replace(/\/+$/, "");
+
+  if (sub === "") {
+    if (req.method === "GET") return sendJson(res, 200, projectView(p, true));
+    if (req.method === "PATCH") {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        return sendJson(res, 400, { error: "JSONの形式が不正です" });
+      }
+      const name = String((body && body.name) || "").trim().slice(0, 50);
+      if (!name) return sendJson(res, 400, { error: "プロジェクト名を入力してください" });
+      p.name = name;
+      persistLater("projects", 0);
+      try { await flushOne("projects"); } catch { return sendJson(res, 502, { error: "保存できませんでした。もう一度お試しください" }); }
+      return sendJson(res, 200, projectView(p, true));
+    }
+    return sendJson(res, 405, { error: "このメソッドは使えません" });
+  }
+
+  // APIキー: 新しく作る / 停止・再開
+  if (sub === "keys") {
+    if (req.method !== "POST") return sendJson(res, 405, { error: "POST のみ使えます" });
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch {
+      return sendJson(res, 400, { error: "JSONの形式が不正です" });
+    }
+    const type = body && body.type;
+    if (type !== "public" && type !== "secret") return sendJson(res, 400, { error: 'type は "public" か "secret" を指定してください' });
+    if (Object.values(p.keys).filter((k) => k.type === type).length >= KEYS_PER_TYPE) {
+      return sendJson(res, 507, { error: `${type === "secret" ? "Secret" : "Public"}キーは${KEYS_PER_TYPE}個までです。使わないキーは停止のままにしておけます` });
+    }
+    const rec = addKey(p, type, body.label);
+    persistLater("projects", 0);
+    try { await flushOne("projects"); } catch {
+      delete p.keys[rec.id];
+      rebuildKeyIndex();
+      return sendJson(res, 502, { error: "保存できませんでした。もう一度お試しください" });
+    }
+    return sendJson(res, 201, rec);
+  }
+  const km = /^keys\/([0-9a-f]{8})$/.exec(sub);
+  if (km) {
+    const rec = p.keys[km[1]];
+    if (!rec) return sendJson(res, 404, { error: "キーが見つかりません" });
+    if (req.method !== "PATCH") return sendJson(res, 405, { error: "PATCH のみ使えます" });
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch {
+      return sendJson(res, 400, { error: "JSONの形式が不正です" });
+    }
+    if (!body || typeof body.active !== "boolean") return sendJson(res, 400, { error: '{"active": true または false} を送ってください' });
+    const before = rec.active;
+    rec.active = body.active;
+    persistLater("projects", 0);
+    try { await flushOne("projects"); } catch {
+      rec.active = before;
+      return sendJson(res, 502, { error: "保存できませんでした。もう一度お試しください" });
+    }
+    if (!rec.active) for (const c of wss.clients) if (c.pid === p.id && c.keyId === rec.id) c.close(4401, "key stopped"); // 停止したキーで接続中のものを切る
+    return sendJson(res, 200, rec);
+  }
+
+  // サーバーデータ: 一覧 / 削除
+  if (sub === "data") {
+    if (req.method !== "GET") return sendJson(res, 405, { error: "GET のみ使えます" });
+    return sendJson(res, 200, pdata[p.id] || {});
+  }
+  if (sub.startsWith("data/")) {
+    const key = decodeKeyName(sub.slice(5));
+    if (!key) return sendJson(res, 400, { error: "キーが不正です" });
+    if (req.method !== "DELETE") return sendJson(res, 405, { error: "DELETE のみ使えます" });
+    return pdelete(p.id, key, me.name) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "キーが存在しません" });
+  }
+  if (sub === "files") {
+    if (req.method !== "GET") return sendJson(res, 405, { error: "GET のみ使えます" });
+    return sendJson(res, 200, projectFiles(p.id).map(fileInfo).sort((a, b) => b.createdAt - a.createdAt));
+  }
+  if (sub.startsWith("files/")) {
+    const id = sub.slice(6);
+    if (!FILE_ID_RE.test(id) || !Object.hasOwn(files, id) || files[id].pid !== p.id) return sendJson(res, 404, { error: "ファイルが存在しません" });
+    if (req.method !== "DELETE") return sendJson(res, 405, { error: "DELETE のみ使えます" });
+    await deleteProjectFile(id);
+    return sendJson(res, 200, { ok: true });
+  }
+
+  return sendJson(res, 404, { error: "見つかりません" });
+}
+
 // ---- HTTP (API + 静的ファイル + ヘルスチェック) ----
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -727,6 +1274,17 @@ const MIME = {
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
+
+  // 混み具合の集計 (APIの利用と画像・動画の配信だけを数える。画面の管理用の通信は数えない)
+  const counted = /^\/(api\/(v1|data|files|keys)|files\/)/.test(url.pathname);
+  if (counted) {
+    const t0 = Date.now();
+    activeReqs++;
+    res.on("close", () => {
+      activeReqs--;
+      recordHit(res.pid, Date.now() - t0, res.statusCode >= 500);
+    });
+  }
 
   if (url.pathname === "/health") {
     return sendJson(res, 200, {
@@ -795,24 +1353,54 @@ function send(ws, msg) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
 
+// 従来の共通チャンネル (キー無しで接続した人だけ)
 function broadcast(msg, except) {
   const data = JSON.stringify(msg);
   for (const client of wss.clients) {
-    if (client !== except && client.readyState === WebSocket.OPEN) client.send(data);
+    if (!client.pid && client !== except && client.readyState === WebSocket.OPEN) client.send(data);
+  }
+}
+
+const legacyCount = () => [...wss.clients].filter((c) => !c.pid).length;
+const projectClients = (pid) => [...wss.clients].filter((c) => c.pid === pid).length;
+
+// プロジェクトのチャンネル (そのプロジェクトのキーで接続した人だけ)
+function pbroadcast(pid, msg) {
+  const data = JSON.stringify(msg);
+  for (const client of wss.clients) {
+    if (client.pid === pid && client.readyState === WebSocket.OPEN) client.send(data);
   }
 }
 
 function broadcastPresence() {
-  broadcast({ type: "presence", count: wss.clients.size });
+  broadcast({ type: "presence", count: legacyCount() });
 }
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
   ws.id = `user-${nextId++}`;
   ws.isAlive = true;
   ws.on("pong", () => (ws.isAlive = true));
 
+  // キー付きの接続 (?key=...) は、そのプロジェクトの更新だけを受け取る (読み取り専用)
+  const wsUrl = new URL(req.url || "/", "http://localhost");
+  if (wsUrl.searchParams.has("key")) {
+    const a = projectAuth(req, wsUrl, true);
+    if (a.error) {
+      send(ws, { type: "error", message: a.error });
+      ws.close(4401, "unauthorized");
+      return;
+    }
+    ws.pid = a.p.id;
+    ws.keyId = a.k.id;
+    send(ws, { type: "init", id: ws.id, data: pdata[ws.pid] || {}, count: projectClients(ws.pid) });
+    pbroadcast(ws.pid, { type: "presence", count: projectClients(ws.pid) });
+    ws.on("message", () => send(ws, { type: "error", message: "WebSocketは読み取り専用です。書き込みには REST API (Secretキー) を使ってください" }));
+    ws.on("close", () => pbroadcast(ws.pid, { type: "presence", count: projectClients(ws.pid) }));
+    return;
+  }
+
   // 接続直後に現在の全データを送る
-  send(ws, { type: "init", id: ws.id, data: store, count: wss.clients.size });
+  send(ws, { type: "init", id: ws.id, data: store, count: legacyCount() });
   broadcastPresence();
 
   ws.on("message", (raw) => {
@@ -873,6 +1461,7 @@ async function start() {
   } else {
     console.log(`保存先: このサーバーのファイル (${DATA_DIR})。無料のホスティングでは、再起動で消えることがあります`);
   }
+  initProjects();
   server.listen(PORT, () => {
     console.log(`SerBANK 起動: http://localhost:${PORT}`);
     if (!keyRequired) console.log("注意: キー必須の設定がないため、REST APIの書き込みは誰でも可能です (API_KEY または REQUIRE_KEY=1 で制限)");
