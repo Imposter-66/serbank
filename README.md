@@ -15,6 +15,9 @@ npm start          # http://localhost:3000
 | --- | --- |
 | `REQUIRE_KEY` | `1` にすると、書き込み・アップロードに APIキーが必須になる(**公開するなら推奨**) |
 | `API_KEY` | 管理者用のキー。設定すると、書き込みにキーが必須になり、このキーは全ファイルを削除できる |
+| `SUPABASE_URL` | Supabase の Project URL(例 `https://xxxx.supabase.co`)。設定すると、データ・キー・画像を Supabase に保存する(再起動しても消えない) |
+| `SUPABASE_SERVICE_KEY` | Supabase の secret キー。**絶対に公開しない。Renderの環境変数にだけ入れる** |
+| `SUPABASE_BUCKET` | 画像・動画の入れ物の名前 (既定 `uploads`。自動で作られる) |
 | `DATA_DIR` | `data.json`・`keys.json`・`files.json`・`uploads/` の保存先 (永続ディスクのパス) |
 | `MAX_FILE_MB` | 画像・動画1つの上限。既定は制限なし。設定したときだけ制限される |
 | `MAX_TOTAL_MB` | 画像・動画の保存できる合計。既定は制限なし。設定したときだけ制限される |
@@ -22,6 +25,18 @@ npm start          # http://localhost:3000
 | `GAKU_VERIFY_URL` | GAKU PAY のウェブアプリURL。既定でコードに入っているので、変えるとき以外は不要 |
 | `ALLOW_UNVERIFIED` | `1` の間だけ、本人確認なしでキーを発行する。**動作確認専用。公開環境では使わない** |
 | `PORT` | 待ち受けポート (既定 3000。Renderでは自動) |
+
+## 無料でデータを残す (Supabase)
+
+Renderの無料プランは、再起動するとサーバー内のファイルが消えます。Supabase(無料)に保存すると残ります。
+
+1. https://supabase.com でプロジェクトを作る
+2. 左メニュー「SQL Editor」で、`supabase-setup.sql` の中身を貼り付けて Run
+3. 「Project Settings → API Keys」から、Project URL と secret キーをコピー
+4. Render の Environment に `SUPABASE_URL` と `SUPABASE_SERVICE_KEY` を追加して保存(自動で再デプロイされる)
+5. `https://あなたのサイト/health` を開き、`"storage":"supabase"` と出れば成功
+
+無料枠の目安: 1ファイル50MBまで、合計1GBまで。1週間ほど誰も使わないと Supabase のプロジェクトが一時停止します(データは残る。ダッシュボードから再開できる)。
 
 ## アカウントとAPIキー
 
