@@ -337,6 +337,7 @@ var GakuAcct = (function () {
     return d ? `${d}日 ${h}時間` : h ? `${h}時間 ${m}分` : m ? `${m}分` : `${s}秒`;
   };
   const num = (n) => Number(n || 0).toLocaleString("ja-JP");
+  const projectUrl = (p) => `${BASE}/p/${p.id}`;
   const mask = (v) => v.slice(0, 3) + "•".repeat(14) + v.slice(-4);
   const initial = (name) => Array.from(String(name || "?"))[0] || "?";
 
@@ -379,7 +380,6 @@ var GakuAcct = (function () {
         ${tile("稼働時間", fmtUp(st.uptimeSec), "起動してから")}
         ${tile("メモリ", num(st.rssMB) + " MB", "使用中")}
         ${tile("プロジェクト数", num(st.projects), "サーバー全体")}
-        ${tile("保存先", st.storage === "supabase" ? "Supabase" : "サーバー内", st.storage === "supabase" ? "再起動しても残る" : "再起動で消えることも")}
         ${tile("画像・動画の容量", used, st.maxFileBytes ? "1ファイル " + fmtBytes(st.maxFileBytes) + " まで" : "")}
       </div>
       ${bars(st.series, "リクエスト数 (1分ごと・直近60分)")}
@@ -563,13 +563,15 @@ var GakuAcct = (function () {
     const p = S.project;
     const pub = withKeys && p.keys.find((k) => k.type === "public" && k.active);
     const sec = withKeys && p.keys.find((k) => k.type === "secret" && k.active);
+    const PB = projectUrl(p);
     const PK = pub ? pub.value : "pk_ここにPublicキー";
     const SK = sec ? sec.value : "sk_ここにSecretキー";
     return [
       "あなたは、共有データ用サーバー「SerBANK」のAPIを使うプログラムを書きます。以下の仕様どおりに使ってください。",
       "",
       "【基本】",
-      "- ベースURL: " + BASE,
+      "- このプロジェクト専用のURL (ベースURL): " + PB,
+      "    以下の /data や /files などは、すべてこのURLの後ろに付けます。キーは、このプロジェクトのものだけが使えます。",
       "- プロジェクト: " + p.name,
       "- 形式: すべて JSON (画像・動画のアップロードを除く)。文字コードは UTF-8。",
       "- APIキーは2種類あり、必ずヘッダーに付けます。どちらの形でも使えます。",
@@ -583,24 +585,24 @@ var GakuAcct = (function () {
       "- 他のサイトのブラウザ(JavaScript の fetch)からも呼べます (CORS対応)。",
       "",
       "【文字・数値・JSONデータ】 名前(キー)ごとに値を1つ保存します。名前は1〜100文字。値は JSON なら何でもよく、1回のサイズは64KBまで。1プロジェクトに1000件まで。",
-      "- 全部読む  (Public/Secret):  GET " + BASE + "/api/v1/data",
+      "- 全部読む  (Public/Secret):  GET " + PB + "/data",
       "     → {\"名前\": {\"value\": 値, \"updatedAt\": 時刻(ミリ秒), \"updatedBy\": 更新したキーの名前}, ...}",
-      "- 1つ読む   (Public/Secret):  GET " + BASE + "/api/v1/data/名前   (無ければ 404)",
-      "- 書く       (Secret):         PUT " + BASE + "/api/v1/data/名前   ボディ {\"value\": 任意のJSON}  (Content-Type: application/json)",
-      "- 消す       (Secret):         DELETE " + BASE + "/api/v1/data/名前",
+      "- 1つ読む   (Public/Secret):  GET " + PB + "/data/名前   (無ければ 404)",
+      "- 書く       (Secret):         PUT " + PB + "/data/名前   ボディ {\"value\": 任意のJSON}  (Content-Type: application/json)",
+      "- 消す       (Secret):         DELETE " + PB + "/data/名前",
       "- 名前に日本語や記号を使うときは、URLエンコードしてください。",
       "",
       "【画像・動画】 PNG / JPEG / GIF / WebP / AVIF / MP4 / MOV / WebM に対応。1ファイル最大50MB。",
-      "- アップロード (Secret): POST " + BASE + "/api/v1/files",
+      "- アップロード (Secret): POST " + PB + "/files",
       "    ボディにファイルそのもの(バイナリ)を送ります。ヘッダーに X-File-Name: URLエンコードしたファイル名 を付けます。",
       "    成功すると 201 で {\"id\", \"url\": \"/files/xxxx\", \"name\", \"type\", \"size\"} が返ります。",
       "- 表示: 返ってきた url の先頭に " + BASE + " を付けて、<img src> や <video src> に使います (例 " + BASE + "/files/xxxx)。この表示にキーは要りません。",
-      "- 一覧 (Public/Secret): GET " + BASE + "/api/v1/files    1つの情報: GET " + BASE + "/api/v1/files/{id}",
-      "- 削除 (Secret): DELETE " + BASE + "/api/v1/files/{id}",
-      "- 画像をデータにも載せたいときは、アップロード後に PUT /api/v1/data/名前 へ {\"value\": {\"type\": \"image\", \"url\": \"" + BASE + "/files/xxxx\", \"name\": \"ファイル名\"}} (動画は type を \"video\") と保存してください。",
+      "- 一覧 (Public/Secret): GET " + PB + "/files    1つの情報: GET " + PB + "/files/{id}",
+      "- 削除 (Secret): DELETE " + PB + "/files/{id}",
+      "- 画像をデータにも載せたいときは、アップロード後に PUT /data/名前 へ {\"value\": {\"type\": \"image\", \"url\": \"" + BASE + "/files/xxxx\", \"name\": \"ファイル名\"}} (動画は type を \"video\") と保存してください。",
       "",
       "【リアルタイムに受け取る (WebSocket・読み取り専用)】",
-      "- 接続先: " + BASE.replace(/^http/, "ws") + "/?key=<Publicキー または Secretキー>",
+      "- 接続先: " + PB.replace(/^http/, "ws") + "?key=<Publicキー または Secretキー>",
       "- 接続直後に {\"type\":\"init\",\"data\":{...このプロジェクトの全データ...}} が届き、その後は更新のたびに",
       "  {\"type\":\"update\",\"key\":\"名前\",\"entry\":{\"value\":...,\"updatedAt\":...,\"updatedBy\":...}} や {\"type\":\"delete\",\"key\":\"名前\"} が届きます。",
       "- キーが停止されると、接続は切れます。書き込みは、上の REST API (Secret キーの PUT) を使ってください。",
@@ -610,13 +612,13 @@ var GakuAcct = (function () {
       "- 413: データまたはファイルが大きすぎる  - 415: 対応していない種類のファイル  - 507: 容量や件数がいっぱい",
       "",
       "【例 (curl)】",
-      "curl -X PUT " + BASE + "/api/v1/data/memo -H \"Content-Type: application/json\" -H \"X-API-Key: " + SK + "\" -d '{\"value\":\"こんにちは\"}'",
-      "curl " + BASE + "/api/v1/data/memo -H \"X-API-Key: " + PK + "\"",
-      "curl -X POST " + BASE + "/api/v1/files -H \"X-API-Key: " + SK + "\" -H \"X-File-Name: cat.png\" --data-binary @cat.png",
+      "curl -X PUT " + PB + "/data/memo -H \"Content-Type: application/json\" -H \"X-API-Key: " + SK + "\" -d '{\"value\":\"こんにちは\"}'",
+      "curl " + PB + "/data/memo -H \"X-API-Key: " + PK + "\"",
+      "curl -X POST " + PB + "/files -H \"X-API-Key: " + SK + "\" -H \"X-File-Name: cat.png\" --data-binary @cat.png",
       "",
       "【例 (ブラウザのJavaScript。Public キーだけを使う)】",
-      "const r = await (await fetch(\"" + BASE + "/api/v1/data/memo\", { headers: { \"X-API-Key\": \"" + PK + "\" } })).json(); // r.value",
-      "const ws = new WebSocket(\"" + BASE.replace(/^http/, "ws") + "/?key=" + PK + "\"); ws.onmessage = (e) => console.log(JSON.parse(e.data));",
+      "const r = await (await fetch(\"" + PB + "/data/memo\", { headers: { \"X-API-Key\": \"" + PK + "\" } })).json(); // r.value",
+      "const ws = new WebSocket(\"" + PB.replace(/^http/, "ws") + "?key=" + PK + "\"); ws.onmessage = (e) => console.log(JSON.parse(e.data));",
       "",
       "上の仕様に沿って、私がこれから頼むプログラムを書いてください。"
     ].join("\n");
@@ -625,6 +627,12 @@ var GakuAcct = (function () {
   function renderKeys() {
     $("content").innerHTML = `
       <div><h2>APIキー</h2><p class="lead">他のサイトやプログラムから、このプロジェクトのデータを使うための鍵です。</p></div>
+      <section class="glass card">
+        <h3>このプロジェクト専用のURL</h3>
+        <p class="lead">プロジェクトごとに、専用のURLがあります。下のキーといっしょに使います。</p>
+        <div class="krow"><code class="kval" id="projUrl">${esc(projectUrl(S.project))}</code><div class="kbtns"><button class="btn sm" data-act="copyurlbase">コピー</button></div></div>
+        <p class="hint">例: <code>${esc(projectUrl(S.project))}/data/memo</code> にキーを付けて呼び出します。</p>
+      </section>
       <section class="glass card">
         <div class="kcard-head">
           <div><h3>Public キー<span class="badge pub">公開してOK</span></h3><p class="lead">読み取り専用です。ブラウザで動くページに入れても、データを書き換えられる心配はありません。</p></div>
@@ -814,6 +822,7 @@ var GakuAcct = (function () {
       if (act === "copykey") { const k = S.project.keys.find((x) => x.id === kid); return copyText(k.value, k.type === "secret" ? "Secret キーをコピーしました。公開しないでください" : "Public キーをコピーしました"); }
       if (act === "togglekey") return toggleKey(kid);
       if (act === "newkey") return newKey(el.dataset.type, el);
+      if (act === "copyurlbase") return copyText(projectUrl(S.project), "URLをコピーしました");
       if (act === "copyprompt") return copyText(promptText(false), "文章をコピーしました");
       if (act === "copypromptkey") return copyText(promptText(true), "キー入りの文章をコピーしました。他の人には見せないでください");
       if (act === "dtab") { S.dtab = el.dataset.d; return renderData(); }
