@@ -4,6 +4,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { Readable } = require("stream");
 const { WebSocketServer, WebSocket } = require("ws");
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -13,11 +14,26 @@ const DATA_FILE = path.join(DATA_DIR, "data.json");
 const KEYS_FILE = path.join(DATA_DIR, "keys.json");
 const FILES_FILE = path.join(DATA_DIR, "files.json");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
-// 画像・動画の容量制限 (MB)。既定は制限なし。
-//   MAX_FILE_MB: 1ファイルの上限 / MAX_TOTAL_MB: 保存できる合計 (どちらも、設定したときだけ制限される)
-const mbToBytes = (v) => (Number(v) > 0 ? Number(v) * 1024 * 1024 : Infinity);
-const MAX_FILE_BYTES = mbToBytes(process.env.MAX_FILE_MB);
-const MAX_TOTAL_BYTES = mbToBytes(process.env.MAX_TOTAL_MB);
+
+// ---- Supabase (無料で、再起動しても消えない保存先) ----
+//   SUPABASE_URL         : 例 https://xxxx.supabase.co
+//   SUPABASE_SERVICE_KEY : 秘密のキー (secret key / service_role)。絶対に公開しない
+//   SUPABASE_BUCKET      : 画像・動画を入れる入れ物の名前 (既定 uploads。自動で作られる)
+// 2つ(URLとキー)が設定されているときだけ Supabase を使い、無いときは今までどおり DATA_DIR のファイルに保存する。
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_KEY || "").trim();
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "uploads";
+const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_KEY);
+
+// 画像・動画の容量制限 (MB)。
+//   MAX_FILE_MB: 1ファイルの上限 / MAX_TOTAL_MB: 保存できる合計
+//   未設定のとき、ファイルに保存する場合は制限なし。Supabase を使う場合は無料枠に合わせて 50MB / 900MB。
+const mbToBytes = (v, fallbackMb) => {
+  const n = Number(v) > 0 ? Number(v) : fallbackMb;
+  return n > 0 ? n * 1024 * 1024 : Infinity;
+};
+const MAX_FILE_BYTES = mbToBytes(process.env.MAX_FILE_MB, USE_SUPABASE ? 50 : 0);
+const MAX_TOTAL_BYTES = mbToBytes(process.env.MAX_TOTAL_MB, USE_SUPABASE ? 900 : 0);
 const PUBLIC_DIR = path.join(__dirname, "public");
 // public フォルダがあればその中身を配信し、無ければ同じ場所の index.html だけを配信する
 const HAS_PUBLIC_DIR = fs.existsSync(PUBLIC_DIR);
@@ -40,16 +56,6 @@ try {
   store = Object.create(null);
 }
 
-let saveTimer = null;
-function scheduleSave() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    fs.writeFile(DATA_FILE, JSON.stringify(store, null, 2), (err) => {
-      if (err) console.error("保存に失敗:", err.message);
-    });
-  }, 300);
-}
-
 // ---- 発行済みAPIキー (キーそのものは保存せず、ハッシュだけ保存する) ----
 let keys = {};
 try {
@@ -58,8 +64,160 @@ try {
   keys = {};
 }
 
+// ---- 保存 (Supabase があればそこへ、なければ DATA_DIR のファイルへ) ----
+// 「data」(共有データ)・「keys」(APIキーのハッシュ)・「files」(画像・動画の情報)の3つを、それぞれ丸ごと保存する。
+const PERSIST_FILES = { data: DATA_FILE, keys: KEYS_FILE, files: FILES_FILE };
+const snapshot = (name) => (name === "data" ? store : name === "keys" ? keys : files);
+
+function sbHeaders(extra = {}) {
+  const h = { apikey: SUPABASE_KEY, ...extra };
+  // 従来形式(JWT)のキーは Authorization にも付ける。新形式(sb_secret_...)は apikey だけでよい
+  if (SUPABASE_KEY.startsWith("eyJ")) h.Authorization = `Bearer ${SUPABASE_KEY}`;
+  return h;
+}
+
+function sb(pathAndQuery, opts = {}) {
+  const { timeout = 30000, ...rest } = opts;
+  return fetch(SUPABASE_URL + pathAndQuery, { ...rest, headers: sbHeaders(opts.headers), signal: AbortSignal.timeout(timeout) });
+}
+
+async function sbError(r, what) {
+  const text = (await r.text().catch(() => "")).slice(0, 300);
+  const e = new Error(`${what} (HTTP ${r.status}) ${text}`);
+  e.status = r.status;
+  e.body = text;
+  return e;
+}
+
+async function sbUpsert(name, value) {
+  const r = await sb("/rest/v1/kv?on_conflict=name", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify([{ name, value, updated_at: new Date().toISOString() }]),
+  });
+  if (!r.ok) throw await sbError(r, `Supabase への保存に失敗 (${name})`);
+}
+
+async function sbLoad(name) {
+  const r = await sb(`/rest/v1/kv?name=eq.${encodeURIComponent(name)}&select=value`);
+  if (!r.ok) {
+    const e = await sbError(r, `Supabase から読み込めません (${name})`);
+    if (r.status === 404 || /PGRST205|does not exist|Could not find the table/i.test(e.body)) {
+      throw new Error("Supabase に kv テーブルがありません。supabase-setup.sql を、Supabase の SQL Editor で実行してください");
+    }
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Supabase のキー(SUPABASE_SERVICE_KEY)が正しくないようです。secret key をもう一度コピーしてください");
+    }
+    throw e;
+  }
+  const rows = await r.json();
+  return rows[0] ? rows[0].value : null;
+}
+
+async function writeNamed(name) {
+  if (USE_SUPABASE) return sbUpsert(name, snapshot(name));
+  await fs.promises.mkdir(DATA_DIR, { recursive: true });
+  await fs.promises.writeFile(PERSIST_FILES[name], JSON.stringify(snapshot(name), null, 2));
+}
+
+const dirty = new Set();
+const inflight = {};
+const saveTimers = {};
+
+// 保存が終わるまで待つ。失敗したら、5秒後に自動でやり直す予約をして、エラーを投げる
+async function flushOne(name) {
+  while (inflight[name] || dirty.has(name)) {
+    if (inflight[name]) {
+      try { await inflight[name]; } catch {}
+      continue;
+    }
+    dirty.delete(name);
+    clearTimeout(saveTimers[name]);
+    const p = (inflight[name] = writeNamed(name));
+    try {
+      await p;
+    } catch (e) {
+      console.error(`保存に失敗 (${name}):`, e.message);
+      dirty.add(name);
+      saveTimers[name] = setTimeout(() => flushOne(name).catch(() => {}), 5000);
+      throw e;
+    } finally {
+      inflight[name] = null;
+    }
+  }
+}
+
+function persistLater(name, delay = 300) {
+  dirty.add(name);
+  clearTimeout(saveTimers[name]);
+  saveTimers[name] = setTimeout(() => flushOne(name).catch(() => {}), delay);
+}
+
+async function flushAll() {
+  await Promise.all(["data", "keys", "files"].map((n) => flushOne(n).catch(() => {})));
+}
+
+function scheduleSave() {
+  persistLater("data");
+}
 function saveKeys() {
-  fs.writeFileSync(KEYS_FILE, JSON.stringify(keys, null, 2));
+  persistLater("keys", 0);
+}
+function saveFiles() {
+  persistLater("files", 0);
+}
+
+// 起動時: Supabase から保存済みのデータを読み込む (入れ物のバケットも、無ければ作る)
+async function loadFromSupabase() {
+  const r = await sb("/storage/v1/bucket", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: SUPABASE_BUCKET, name: SUPABASE_BUCKET, public: false }),
+  });
+  if (!r.ok) {
+    const e = await sbError(r, "Supabase の Storage(画像・動画の入れ物)を用意できません");
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Supabase のキーが正しくありません。SUPABASE_SERVICE_KEY に、Supabase の secret キー(service_role)を貼ったか確認してください");
+    }
+    if (!/already exists|Duplicate/i.test(e.body) && r.status !== 409) throw e;
+  }
+  for (const name of ["data", "keys", "files"]) {
+    const v = await sbLoad(name);
+    if (!v || typeof v !== "object") continue;
+    if (name === "data") store = Object.assign(Object.create(null), v);
+    else if (name === "keys") keys = v;
+    else files = v;
+  }
+}
+
+async function sbPutObject(id, type, filePath) {
+  const body = await fs.promises.readFile(filePath);
+  const r = await sb(`/storage/v1/object/${SUPABASE_BUCKET}/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": type, "Cache-Control": "max-age=31536000" },
+    body,
+    timeout: 180000,
+  });
+  if (r.ok) return;
+  const e = await sbError(r, "Supabase Storage への保存に失敗");
+  if (r.status === 413 || /exceeded the maximum allowed size|Payload too large/i.test(e.body)) {
+    e.userMessage = "ファイルが大きすぎます (Supabaseの無料枠は1ファイル50MBまでです)";
+    e.status = 413;
+  } else if (/quota|storage limit|exceeded/i.test(e.body)) {
+    e.userMessage = "保存容量がいっぱいです。古いファイルを削除してください";
+    e.status = 507;
+  }
+  throw e;
+}
+
+async function removeObject(id) {
+  if (!USE_SUPABASE) return fs.promises.unlink(path.join(UPLOAD_DIR, id)).catch(() => {});
+  try {
+    const r = await sb(`/storage/v1/object/${SUPABASE_BUCKET}/${id}`, { method: "DELETE" });
+    if (!r.ok && r.status !== 404) console.error("Storage の削除に失敗:", r.status);
+  } catch (e) {
+    console.error("Storage の削除に失敗:", e.message);
+  }
 }
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
@@ -108,21 +266,16 @@ function issueKey(uid, name) {
   for (const h of Object.keys(keys)) if (keys[h].uid === uid) delete keys[h]; // 再発行すると古いキーは無効
   const key = "sb_" + crypto.randomBytes(24).toString("base64url");
   keys[sha256(key)] = { uid, name, createdAt: Date.now() };
-  saveKeys();
+  saveKeys(); // 呼び出した側が、保存の完了を待ってから、キーを本人に渡す
   return key;
 }
 
-// ---- 画像・動画ファイル (本体は uploads/ フォルダ、情報は files.json) ----
+// ---- 画像・動画ファイル (本体は uploads/ フォルダか Supabase Storage、情報は files.json か Supabase) ----
 let files = {};
 try {
   files = JSON.parse(fs.readFileSync(FILES_FILE, "utf8"));
 } catch {
   files = {};
-}
-
-function saveFiles() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(FILES_FILE, JSON.stringify(files, null, 2));
 }
 
 const FILE_ID_RE = /^[A-Za-z0-9_-]{16}$/;
@@ -223,6 +376,60 @@ function corsHeaders() {
   };
 }
 
+// 画像・動画を返すときの共通のヘッダー (安全のため、ブラウザに「種類を勝手に判断しない」「中のスクリプトは動かさない」と伝える)
+function fileHeaders(meta) {
+  return {
+    "Content-Type": meta.type,
+    "Accept-Ranges": "bytes",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "sandbox",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+    "Access-Control-Allow-Origin": CORS_ORIGIN,
+    "Cache-Control": "public, max-age=31536000, immutable",
+    "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(meta.name)}`,
+  };
+}
+
+// Supabase Storage から取り出して、そのまま返す (入れ物は非公開のまま。Range もそのまま渡す)
+async function serveFromSupabase(req, res, id, meta) {
+  const headers = {};
+  if (req.headers.range) headers.Range = req.headers.range;
+  let r;
+  try {
+    r = await sb(`/storage/v1/object/${SUPABASE_BUCKET}/${id}`, { headers, timeout: 60000 });
+  } catch {
+    res.writeHead(502).end("Bad Gateway");
+    return;
+  }
+  const drop = async () => {
+    try { await r.body.cancel(); } catch {}
+  };
+  if (r.status === 416) {
+    await drop();
+    res.writeHead(416, { ...fileHeaders(meta), "Content-Range": r.headers.get("content-range") || "bytes */*" }).end();
+    return;
+  }
+  if (r.status !== 200 && r.status !== 206) {
+    await drop();
+    res.writeHead(r.status === 404 || r.status === 400 ? 404 : 502).end(r.status === 404 || r.status === 400 ? "Not Found" : "Bad Gateway");
+    return;
+  }
+  const h = fileHeaders(meta);
+  const len = r.headers.get("content-length");
+  if (len) h["Content-Length"] = len;
+  const range = r.headers.get("content-range");
+  if (range) h["Content-Range"] = range;
+  res.writeHead(r.status, h);
+  if (req.method === "HEAD") {
+    await drop();
+    return res.end();
+  }
+  const stream = Readable.fromWeb(r.body);
+  stream.on("error", () => res.destroy());
+  res.on("close", () => stream.destroy());
+  stream.pipe(res);
+}
+
 // 画像・動画を配信する (動画のシークや途中再生のため Range リクエストに対応)
 function serveFile(req, res, id) {
   if (!FILE_ID_RE.test(id) || !Object.hasOwn(files, id)) {
@@ -234,22 +441,20 @@ function serveFile(req, res, id) {
     return;
   }
   const meta = files[id];
+  if (USE_SUPABASE) {
+    serveFromSupabase(req, res, id, meta).catch(() => {
+      if (!res.headersSent) res.writeHead(502).end("Bad Gateway");
+      else res.destroy();
+    });
+    return;
+  }
   const filePath = path.join(UPLOAD_DIR, id);
   fs.stat(filePath, (err, st) => {
     if (err) {
       res.writeHead(404).end("Not Found");
       return;
     }
-    const base = {
-      "Content-Type": meta.type,
-      "Accept-Ranges": "bytes",
-      "X-Content-Type-Options": "nosniff",
-      "Content-Security-Policy": "sandbox",
-      "Cross-Origin-Resource-Policy": "cross-origin",
-      "Access-Control-Allow-Origin": CORS_ORIGIN,
-      "Cache-Control": "public, max-age=31536000, immutable",
-      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(meta.name)}`,
-    };
+    const base = fileHeaders(meta);
 
     let start = 0;
     let end = st.size - 1;
@@ -321,7 +526,21 @@ async function handleUpload(req, res) {
     return sendJson(res, 507, { error: "保存容量がいっぱいです。古いファイルを削除してください" });
   }
 
-  fs.renameSync(tmpPath, path.join(UPLOAD_DIR, id));
+  if (USE_SUPABASE) {
+    try {
+      await sbPutObject(id, type, tmpPath);
+    } catch (e) {
+      fs.unlink(tmpPath, () => {});
+      console.error(e.message);
+      return sendJson(res, e.status === 413 || e.status === 507 ? e.status : 502, {
+        error: e.userMessage || "保存先(Supabase)に保存できませんでした",
+      });
+    }
+    fs.unlink(tmpPath, () => {}); // 作業用の一時ファイルは、もう要らない
+  } else {
+    fs.renameSync(tmpPath, path.join(UPLOAD_DIR, id));
+  }
+
   const url = new URL(req.url, "http://localhost");
   files[id] = {
     name: cleanFileName(req.headers["x-file-name"] || url.searchParams.get("name")),
@@ -332,6 +551,13 @@ async function handleUpload(req, res) {
     createdAt: Date.now(),
   };
   saveFiles();
+  try {
+    await flushOne("files");
+  } catch {
+    delete files[id]; // 情報を保存できなかったので、取り消す
+    await removeObject(id);
+    return sendJson(res, 502, { error: "保存できませんでした。少し待ってから、もう一度お試しください" });
+  }
   return sendJson(res, 201, fileInfo(id));
 }
 
@@ -405,7 +631,13 @@ async function handleApi(req, res, url) {
     } catch (e) {
       return sendJson(res, 403, { error: e.message });
     }
-    return sendJson(res, 200, { key: issueKey(who.uid, who.name), name: who.name });
+    const key = issueKey(who.uid, who.name);
+    try {
+      await flushOne("keys"); // 保存できてから、キーを渡す (保存前に落ちて、キーが無効になるのを防ぐ)
+    } catch {
+      return sendJson(res, 502, { error: "キーを保存できませんでした。少し待ってから、もう一度お試しください" });
+    }
+    return sendJson(res, 200, { key, name: who.name });
   }
 
   // 画像・動画: 一覧 / アップロード / 削除
@@ -427,7 +659,8 @@ async function handleApi(req, res, url) {
       }
       delete files[id];
       saveFiles();
-      fs.unlink(path.join(UPLOAD_DIR, id), () => {});
+      await removeObject(id);
+      await flushOne("files").catch(() => {}); // 失敗しても、自動でやり直される
       return sendJson(res, 200, { ok: true });
     }
     return sendJson(res, 405, { error: "このメソッドは使えません" });
@@ -496,7 +729,12 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
 
   if (url.pathname === "/health") {
-    return sendJson(res, 200, { ok: true, clients: wss.clients.size, keys: Object.keys(store).length });
+    return sendJson(res, 200, {
+      ok: true,
+      clients: wss.clients.size,
+      keys: Object.keys(store).length,
+      storage: USE_SUPABASE ? "supabase" : "local",
+    });
   }
 
   if (url.pathname.startsWith("/files/")) {
@@ -606,22 +844,38 @@ const heartbeat = setInterval(() => {
 }, 30000);
 wss.on("close", () => clearInterval(heartbeat));
 
-function shutdown() {
-  clearTimeout(saveTimer);
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2));
-  } catch {}
+// 停止の合図を受けたら、まだ保存していない分を保存してから終わる (最大8秒待つ)
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  const limit = setTimeout(() => process.exit(1), 8000);
+  await flushAll();
+  clearTimeout(limit);
   process.exit(0);
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-if (require.main === module) {
+async function start() {
+  if (USE_SUPABASE) {
+    try {
+      await loadFromSupabase();
+      console.log(`保存先: Supabase (データ ${Object.keys(store).length}件、画像・動画 ${Object.keys(files).length}件を読み込みました)`);
+    } catch (e) {
+      console.error("Supabase の準備に失敗しました:", e.message);
+      process.exit(1);
+    }
+  } else {
+    console.log(`保存先: このサーバーのファイル (${DATA_DIR})。無料のホスティングでは、再起動で消えることがあります`);
+  }
   server.listen(PORT, () => {
     console.log(`SerBANK 起動: http://localhost:${PORT}`);
     if (!keyRequired) console.log("注意: キー必須の設定がないため、REST APIの書き込みは誰でも可能です (API_KEY または REQUIRE_KEY=1 で制限)");
     if (ALLOW_UNVERIFIED) console.log("警告: ALLOW_UNVERIFIED=1 のため、本人確認なしでキーが発行されます。公開環境では使わないでください");
   });
 }
+
+if (require.main === module) start();
 
 module.exports = { server, wss };
