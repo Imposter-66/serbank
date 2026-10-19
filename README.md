@@ -38,6 +38,44 @@ Renderの無料プランは、再起動するとサーバー内のファイル�
 
 無料枠の目安: 1ファイル50MBまで、合計1GBまで。1週間ほど誰も使わないと Supabase のプロジェクトが一時停止します(データは残る。ダッシュボードから再開できる)。
 
+## プロジェクトとAPIキー (新しい画面)
+
+画面は、左に GAKU acct、右にプロジェクトの画面が出る、ガラス風のデザインです。ログインすると右側が開きます。
+
+- **右上の「＋」**: プロジェクトを作ります。名前の初期値は「(アカウント名)のプロジェクト」です。
+- **プロジェクト画面**: 左のメニューは、プロジェクト名 / APIキー / サーバーデータ / サーバー情報 / サーバー情報の縮小版 です。
+- **APIキーは2種類**: データは、プロジェクトごとに分かれて保存されます。
+  - `pk_...` **Public キー**: 読み取り専用。公開するページに入れてよい。
+  - `sk_...` **Secret キー**: 読み書き・画像のアップロード。絶対に公開しない。
+  - どちらも、画面から「停止」「再開」「新しく作成」ができます。停止すると、そのキーは使えなくなり、リアルタイム接続も切れます。
+- **サーバーデータ**: 保存されているデータと画像・動画を確認・削除できます。
+- **サーバー情報**: 混み具合(空いています / ふつう / やや混んでいます / 混み合っています)、リクエスト数、応答時間、稼働時間、メモリ、容量などを表示します。集計は、サーバーが起動してからの分です。
+- 画面の「AIに使い方を伝える文章」を、ChatGPT・Claude・Gemini などに貼ると、そのプロジェクトのAPIの使い方が伝わります。
+
+### データ用API (`/api/v1`)
+
+ヘッダー `X-API-Key: <キー>` か `Authorization: Bearer <キー>` を付けます。
+
+| 操作 | Public | Secret |
+| --- | --- | --- |
+| `GET /api/v1/data` , `GET /api/v1/data/名前` | ○ | ○ |
+| `PUT /api/v1/data/名前` (ボディ `{"value": ...}`) , `DELETE /api/v1/data/名前` | × (403) | ○ |
+| `GET /api/v1/files` , `GET /api/v1/files/{id}` | ○ | ○ |
+| `POST /api/v1/files` (ファイルそのものを送る。`X-File-Name` に名前) , `DELETE /api/v1/files/{id}` | × (403) | ○ |
+| WebSocket `wss://サイト/?key=<キー>` (そのプロジェクトの更新を受け取る。読み取り専用) | ○ | ○ |
+
+画像・動画の表示 (`/files/{id}`) にキーは要りません。
+
+### 画面用API (ログインで認証・ヘッダー `X-Session`)
+
+`POST /api/session` , `GET /api/status?project=ID` , `GET/POST /api/projects` , `GET/PATCH /api/projects/{id}` , `POST /api/projects/{id}/keys` , `PATCH /api/projects/{id}/keys/{keyId}` (`{"active": true/false}`) , `GET /api/projects/{id}/data|files` , `DELETE /api/projects/{id}/data/名前` , `DELETE /api/projects/{id}/files/{fileId}`
+
+> 保存について: キーは、画面でいつでも確認できるよう、キーそのものを保存しています (Supabase の非公開テーブル)。Supabase の secret キー (`SUPABASE_SERVICE_KEY`) は、今までどおり絶対に公開しないでください。
+
+---
+
+## 旧API (以前の方式・互換のため残してあります)
+
 ## アカウントとAPIキー
 
 画面に GAKU acct が埋め込まれています。ログインして「APIキーを発行する」を押すと、あなた専用のキー(`sb_...`)が表示されます。
