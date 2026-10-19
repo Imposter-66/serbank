@@ -641,7 +641,9 @@ async function handleApi(req, res, url) {
   }
 
   // プロジェクト用API (キーで認証)
-  if (url.pathname.startsWith("/api/v1/") || url.pathname === "/api/v1") return handleV1(req, res, url);
+  if (url.pathname.startsWith("/api/v1/") || url.pathname === "/api/v1") {
+    return handleV1(req, res, url, url.pathname.slice("/api/v1".length).replace(/\/+$/, ""), null);
+  }
   // 画面(コンソール)用API (ログインで認証)
   if (url.pathname === "/api/session" || url.pathname === "/api/status" || url.pathname === "/api/projects" || url.pathname.startsWith("/api/projects/")) {
     return handleConsole(req, res, url);
@@ -1018,13 +1020,16 @@ function decodeKeyName(raw) {
 const READ_ONLY_MSG = "公開用(Public)キーでは読み取りだけできます。書き込み・削除・アップロードには Secret キーを使ってください";
 
 // ---- データ用API: /api/v1/... (キーで認証。Public は読み取り、Secret は読み書き) ----
-async function handleV1(req, res, url) {
+// rest: ベースURLより後ろの部分 (例 "/data/memo")。expectPid: プロジェクト専用URL (/p/ID/...) のとき、そのID
+async function handleV1(req, res, url, rest, expectPid) {
   const auth = projectAuth(req, url, false);
   if (auth.error) return sendJson(res, auth.status, { error: auth.error });
   const { p, k } = auth;
+  if (expectPid && p.id !== expectPid) {
+    return sendJson(res, 401, { error: "このキーは、このプロジェクトのものではありません" });
+  }
   res.pid = p.id;
   const canWrite = k.type === "secret";
-  const rest = url.pathname.slice("/api/v1".length).replace(/\/+$/, "");
 
   if (rest === "" || rest === "/me") {
     return sendJson(res, 200, { project: { id: p.id, name: p.name }, keyType: k.type, canWrite });
@@ -1276,7 +1281,7 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
 
   // 混み具合の集計 (APIの利用と画像・動画の配信だけを数える。画面の管理用の通信は数えない)
-  const counted = /^\/(api\/(v1|data|files|keys)|files\/)/.test(url.pathname);
+  const counted = /^\/(api\/(v1|data|files|keys)|files\/|p\/[0-9a-f]{12})/.test(url.pathname);
   if (counted) {
     const t0 = Date.now();
     activeReqs++;
@@ -1297,6 +1302,20 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname.startsWith("/files/")) {
     serveFile(req, res, url.pathname.slice("/files/".length));
+    return;
+  }
+
+  // プロジェクト専用のURL: /p/プロジェクトID/data ... (中身は /api/v1 と同じ。そのプロジェクトのキーだけが使える)
+  const pm = /^\/p\/([0-9a-f]{12})(\/.*)?$/.exec(url.pathname);
+  if (pm) {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, corsHeaders());
+      return res.end();
+    }
+    handleV1(req, res, url, (pm[2] || "").replace(/\/+$/, ""), pm[1]).catch((e) => {
+      console.error("APIエラー:", e);
+      if (!res.headersSent) sendJson(res, 500, { error: "サーバーエラー" });
+    });
     return;
   }
 
@@ -1385,6 +1404,10 @@ wss.on("connection", (ws, req) => {
   const wsUrl = new URL(req.url || "/", "http://localhost");
   if (wsUrl.searchParams.has("key")) {
     const a = projectAuth(req, wsUrl, true);
+    const wm = /^\/p\/([0-9a-f]{12})\/?$/.exec(wsUrl.pathname);
+    if (!a.error && wm && a.p.id !== wm[1]) {
+      a.error = "このキーは、このプロジェクトのものではありません";
+    }
     if (a.error) {
       send(ws, { type: "error", message: a.error });
       ws.close(4401, "unauthorized");
