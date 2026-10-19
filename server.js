@@ -767,6 +767,10 @@ const server = http.createServer((req, res) => {
   } else {
     // public フォルダが無いとき: index.html だけを配信する
     // (server.js や data.json など、他のファイルは絶対に配信しない)
+    if (url.pathname === "/favicon.ico") {
+      res.writeHead(204).end();
+      return;
+    }
     if (url.pathname !== "/" && url.pathname !== "/index.html") {
       res.writeHead(404).end("Not Found");
       return;
