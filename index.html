@@ -401,6 +401,21 @@ var GakuAcct = (function () {
       <div class="mini-chart">${miniBars(st.series)}</div>`;
   }
 
+  // ======== ログイン情報の保存 (このブラウザのローカルストレージ) ========
+  // 一度ログインすると、次からは GAKU acct の読み込みを待たずに、すぐ画面が開く。
+  // 保存するのは、サーバーが発行した「7日間有効な合言葉」と名前だけ (パスワードは保存しない)。ログアウトすると消える。
+  const CACHE_KEY = "serbank.session.v1";
+  function saveCache() {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ token: S.token, name: S.user ? userLabel(S.user) : "", savedAt: Date.now() })); } catch {}
+  }
+  function clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch {} }
+  function readCache() {
+    try {
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      return c && typeof c.token === "string" && c.token && typeof c.name === "string" ? c : null;
+    } catch { return null; }
+  }
+
   // ======== サーバーとの通信 ========
   let sessionPromise = null;
   async function ensureSession(force) {
@@ -420,6 +435,8 @@ var GakuAcct = (function () {
       if (!r.ok) throw new Error(body.error || "ログインを確認できませんでした");
       S.token = body.token;
       S.sessionName = body.name;
+      if (S.user) S.user = { ...S.user, name: body.name }; // サーバーが確認した名前を使う
+      saveCache();
     })().finally(() => { sessionPromise = null; });
     return sessionPromise;
   }
@@ -434,7 +451,13 @@ var GakuAcct = (function () {
     let r = await run();
     if (r.status === 401) { // ログインの有効期限切れ (サーバーの再起動など) → 自動でやり直す
       S.token = "";
-      await ensureSession(true);
+      clearCache();
+      try {
+        await ensureSession(true);
+      } catch (e) {
+        if (!(acctUser || GakuAcct.user())) { hideLogin(); throw new Error("ログインの有効期限が切れました。もう一度ログインしてください"); }
+        throw e;
+      }
       r = await run();
     }
     const data = await r.json().catch(() => ({}));
@@ -789,6 +812,7 @@ var GakuAcct = (function () {
       const q = S.view === "project" && S.pid ? `?project=${S.pid}` : "";
       const r = await call("GET", "/api/status" + q);
       S.status = r.server;
+      if (r.session) { S.token = r.session; saveCache(); } // 使っている間は、期限が自動で延びる
       if (r.project) S.pstats = r.project;
       if ($("mini")) $("mini").innerHTML = miniPanel(S.status);
       if ($("homeStatus")) $("homeStatus").innerHTML = statusCard(S.status);
@@ -903,9 +927,9 @@ var GakuAcct = (function () {
   let acctUser = null; // ログイン中のアカウント情報
 
   function showLogin(u) {
-    const same = acctUser && userLabel(acctUser) === userLabel(u) && S.user;
+    const same = S.user && S.token && userLabel(S.user) === userLabel(u);
     acctUser = u;
-    if (same) return;
+    if (same) return; // すでに保存したログインで開いている (GAKU acct の読み込みが遅れて届いただけ)
     S.user = u; S.token = ""; S.projects = null; S.project = null; S.pid = null; S.status = null;
     renderHero();
     $("shell").classList.remove("solo");
@@ -916,6 +940,7 @@ var GakuAcct = (function () {
   }
   function hideLogin() {
     acctUser = null; rawProof = "";
+    clearCache();
     S.user = null; S.token = ""; S.projects = null; S.project = null; S.pid = null; S.status = null;
     $("stage").hidden = true;
     $("plusBtn").hidden = true;
@@ -934,6 +959,31 @@ var GakuAcct = (function () {
     }
   }
   window.addEventListener("hashchange", route);
+
+  // 保存したログインがあれば、GAKU acct の読み込みを待たずに、すぐ開く
+  async function bootFromCache() {
+    const c = readCache();
+    if (!c) return;
+    S.user = { name: c.name }; S.token = c.token;
+    renderHero();
+    $("shell").classList.remove("solo");
+    $("stage").hidden = false;
+    $("plusBtn").hidden = false;
+    $("view").innerHTML = `<div class="loading">読み込み中…</div>`;
+    try {
+      const r = await fetch("/api/projects", { headers: { "X-Session": S.token } });
+      if (r.status === 401) throw new Error("expired");
+      diag("保存したログインで開きました");
+      enter();
+    } catch (e) {
+      if (e.message === "expired") { // 期限切れ・サーバー側で無効 → 普通のログイン待ちに戻す
+        clearCache();
+        S.user = null; S.token = "";
+        $("stage").hidden = true; $("plusBtn").hidden = true; $("shell").classList.add("solo"); $("view").innerHTML = "";
+      } else { diag("保存したログインの確認に失敗: " + e.message); enter(); } // 通信できないだけなら、そのまま開いておく
+    }
+  }
+  bootFromCache();
 
   GakuAcct.onLogin(showLogin);
   GakuAcct.onLogout(hideLogin);
