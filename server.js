@@ -816,7 +816,7 @@ function projectAuth(req, url, allowQuery) {
 
 // ---- ログイン (確認コードで本人確認 → 7日間使える、改ざんできない合言葉を渡す) ----
 function signSession(uid, name) {
-  const body = Buffer.from(JSON.stringify({ uid, name, exp: Date.now() + SESSION_DAYS * 86400000 })).toString("base64url");
+  const body = Buffer.from(JSON.stringify({ uid, name, iat: Date.now(), exp: Date.now() + SESSION_DAYS * 86400000 })).toString("base64url");
   const sig = crypto.createHmac("sha256", projDb.secret).update(body).digest("base64url");
   return `${body}.${sig}`;
 }
@@ -830,7 +830,7 @@ function readSession(req) {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   try {
     const d = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    return d.exp > Date.now() && d.uid ? { uid: String(d.uid), name: String(d.name || d.uid) } : null;
+    return d.exp > Date.now() && d.uid ? { uid: String(d.uid), name: String(d.name || d.uid), iat: Number(d.iat) || 0 } : null;
   } catch {
     return null;
   }
@@ -1137,7 +1137,9 @@ async function handleConsole(req, res, url) {
     if (req.method !== "GET") return sendJson(res, 405, { error: "GET のみ使えます" });
     const pid = url.searchParams.get("project");
     const p = pid ? owned(pid) : null;
-    return sendJson(res, 200, { server: serverStatus(), project: p ? projectStats(p) : null });
+    // ログインの有効期間は7日。使っている間は、12時間ごとに新しい合言葉に更新して、期限が延び続けるようにする
+    const renewed = Date.now() - me.iat > 12 * 3600000 ? signSession(me.uid, me.name) : undefined;
+    return sendJson(res, 200, { server: serverStatus(), project: p ? projectStats(p) : null, session: renewed });
   }
 
   if (route === "/api/projects") {
